@@ -1,0 +1,4 @@
+/* reset tối giản và bỏ style mặc định template */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root { height: 100%; }
+body { margin: 0; }
