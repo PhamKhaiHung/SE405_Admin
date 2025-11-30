@@ -10,6 +10,19 @@ const initialVouchers = [
     discountType: 'percent', // percent hoặc fixed
     minOrder: 0,
     maxDiscount: 50000,
+    quantity: 100,
+    createdAt: '2024-12-01 08:00:00',
+    active: true
+  },
+  { 
+    id: 'v2', 
+    name: 'Freeship', 
+    description: 'Miễn phí vận chuyển cho đơn hàng từ 100.000đ', 
+    discount: 0, 
+    discountType: 'freeship',
+    minOrder: 100000,
+    maxDiscount: 0,
+    quantity: 50,
     createdAt: '2024-12-01 08:00:00',
     active: true
   },
@@ -21,6 +34,7 @@ const initialVouchers = [
     discountType: 'fixed',
     minOrder: 200000,
     maxDiscount: 50000,
+    quantity: 200,
     createdAt: '2024-12-05 10:00:00',
     active: true
   },
@@ -38,6 +52,7 @@ export default function Vouchers() {
     discountType: 'percent',
     minOrder: '',
     maxDiscount: '',
+    quantity: '',
   })
 
   // Lọc voucher theo tên hoặc mô tả
@@ -60,6 +75,7 @@ export default function Vouchers() {
       discountType: 'percent',
       minOrder: '',
       maxDiscount: '',
+      quantity: '',
     })
     setShowModal(true)
   }
@@ -74,6 +90,7 @@ export default function Vouchers() {
       discountType: voucher.discountType,
       minOrder: voucher.minOrder.toString(),
       maxDiscount: voucher.maxDiscount.toString(),
+      quantity: voucher.quantity?.toString() || '',
     })
     setShowModal(true)
   }
@@ -89,6 +106,7 @@ export default function Vouchers() {
       discountType: 'percent',
       minOrder: '',
       maxDiscount: '',
+      quantity: '',
     })
   }
 
@@ -111,6 +129,7 @@ export default function Vouchers() {
               discountType: formData.discountType,
               minOrder: parseFloat(formData.minOrder) || 0,
               maxDiscount: parseFloat(formData.maxDiscount) || 0,
+              quantity: parseInt(formData.quantity) || 0,
             }
           : v
       ))
@@ -124,6 +143,7 @@ export default function Vouchers() {
         discountType: formData.discountType,
         minOrder: parseFloat(formData.minOrder) || 0,
         maxDiscount: parseFloat(formData.maxDiscount) || 0,
+        quantity: parseInt(formData.quantity) || 0,
         createdAt: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0],
         active: true,
       }
@@ -153,6 +173,9 @@ export default function Vouchers() {
 
   // Định dạng hiển thị giảm giá
   const formatDiscount = (voucher) => {
+    if (voucher.discountType === 'freeship') {
+      return 'Freeship'
+    }
     if (voucher.discountType === 'percent') {
       return `Giảm ${voucher.discount}%`
     }
@@ -182,6 +205,7 @@ export default function Vouchers() {
               <th>Mô tả</th>
               <th>Giảm giá</th>
               <th>Đơn tối thiểu</th>
+              <th>Số lượng</th>
               <th>Ngày tạo</th>
               <th style={{ width: 200 }}>Hành động</th>
             </tr>
@@ -189,7 +213,7 @@ export default function Vouchers() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
                   Không có voucher nào
                 </td>
               </tr>
@@ -207,6 +231,7 @@ export default function Vouchers() {
                       : 'Không có'
                     }
                   </td>
+                  <td>{voucher.quantity?.toLocaleString('vi-VN') || 0}</td>
                   <td>{formatDate(voucher.createdAt)}</td>
                   <td>
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -300,22 +325,25 @@ export default function Vouchers() {
                 >
                   <option value="percent">Phần trăm (%)</option>
                   <option value="fixed">Số tiền cố định (đ)</option>
+                  <option value="freeship">Freeship</option>
                 </select>
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                  {formData.discountType === 'percent' ? 'Phần trăm giảm (%)' : 'Số tiền giảm (đ)'} *
-                </label>
-                <input
-                  type="number"
-                  value={formData.discount}
-                  onChange={e => setFormData({ ...formData, discount: e.target.value })}
-                  placeholder={formData.discountType === 'percent' ? '20' : '50000'}
-                  min="0"
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
-                />
-              </div>
+              {formData.discountType !== 'freeship' && (
+                <div>
+                  <label style={{ display: 'block', marginBottom: 8, color: 'var(--color-text-muted)' }}>
+                    {formData.discountType === 'percent' ? 'Phần trăm giảm (%)' : 'Số tiền giảm (đ)'} *
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.discount}
+                    onChange={e => setFormData({ ...formData, discount: e.target.value })}
+                    placeholder={formData.discountType === 'percent' ? '20' : '50000'}
+                    min="0"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
+                  />
+                </div>
+              )}
 
               <div>
                 <label style={{ display: 'block', marginBottom: 8, color: 'var(--color-text-muted)' }}>
@@ -346,6 +374,20 @@ export default function Vouchers() {
                   />
                 </div>
               )}
+
+              <div>
+                <label style={{ display: 'block', marginBottom: 8, color: 'var(--color-text-muted)' }}>
+                  Số lượng *
+                </label>
+                <input
+                  type="number"
+                  value={formData.quantity}
+                  onChange={e => setFormData({ ...formData, quantity: e.target.value })}
+                  placeholder="100"
+                  min="0"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
+                />
+              </div>
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 24, justifyContent: 'flex-end' }}>
