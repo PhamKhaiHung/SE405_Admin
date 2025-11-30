@@ -14,6 +14,8 @@ export default function AppLayout() {
           <NavLink to="/users" className={({ isActive }) => isActive ? 'active' : ''}>Người dùng</NavLink>
           <NavLink to="/restaurants" className={({ isActive }) => isActive ? 'active' : ''}>Cửa hàng</NavLink>
           <NavLink to="/reviews" className={({ isActive }) => isActive ? 'active' : ''}>Bình luận</NavLink>
+          <NavLink to="/complaints" className={({ isActive }) => isActive ? 'active' : ''}>Khiếu nại</NavLink>
+          <NavLink to="/vouchers" className={({ isActive }) => isActive ? 'active' : ''}>Voucher</NavLink>
         </nav>
       </aside>
 

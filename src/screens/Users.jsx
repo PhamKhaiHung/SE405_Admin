@@ -24,6 +24,19 @@ export default function Users() {
     setUsers(prev => prev.filter(u => u.id !== id))
   }
 
+  // Định dạng ngày tháng theo dd/mm/yyyy
+  const formatDate = (dateString) => {
+    if (!dateString) return ''
+    // Xử lý định dạng "yyyy-mm-dd" hoặc "yyyy-mm-dd hh:mm:ss"
+    const date = new Date(dateString.replace(/-/g, '/'))
+    if (isNaN(date.getTime())) return dateString
+    
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
   return (
     <div className="grid" style={{ gap: 12 }}>
       <div className="card" style={{ padding: 12 }}>
@@ -56,7 +69,7 @@ export default function Users() {
                 <td>{u.name}</td>
                 <td>{u.email}</td>
                 <td>{u.phone}</td>
-                <td>{u.createdAt}</td>
+                <td>{formatDate(u.createdAt)}</td>
                 <td>
                   <span className={`status-dot ${u.active ? 'active' : 'inactive'}`}>
                     <span className="dot" />{u.active ? 'Hoạt động' : 'Khoá'}

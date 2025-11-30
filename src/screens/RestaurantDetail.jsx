@@ -90,7 +90,10 @@ export default function RestaurantDetail() {
           </div>
         </div>
         <div className="card" style={{ padding: 14 }}>
-          <div className="section-title">Thực đơn</div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div className="section-title">Thực đơn</div>
+            <Link to={`/restaurants/${data.id}/menu`} className="btn primary">Xem chi tiết</Link>
+          </div>
           <div style={{ display: 'grid', gap: 8 }}>
             {data.menu.map(item => (
               <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between' }}>
