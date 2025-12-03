@@ -1,47 +1,10 @@
-import { useState, useMemo } from 'react'
-
-// Dữ liệu mẫu voucher
-const initialVouchers = [
-  { 
-    id: 'v1', 
-    name: 'Giảm 20% tất cả món ăn', 
-    description: 'Áp dụng cho tất cả các món ăn trong hệ thống', 
-    discount: 20, 
-    discountType: 'percent', // percent hoặc fixed
-    minOrder: 0,
-    maxDiscount: 50000,
-    quantity: 100,
-    createdAt: '2024-12-01 08:00:00',
-    active: true
-  },
-  { 
-    id: 'v2', 
-    name: 'Freeship', 
-    description: 'Miễn phí vận chuyển cho đơn hàng từ 100.000đ', 
-    discount: 0, 
-    discountType: 'freeship',
-    minOrder: 100000,
-    maxDiscount: 0,
-    quantity: 50,
-    createdAt: '2024-12-01 08:00:00',
-    active: true
-  },
-  { 
-    id: 'v3', 
-    name: 'Giảm 50.000đ', 
-    description: 'Giảm 50.000đ cho đơn hàng từ 200.000đ', 
-    discount: 50000, 
-    discountType: 'fixed',
-    minOrder: 200000,
-    maxDiscount: 50000,
-    quantity: 200,
-    createdAt: '2024-12-05 10:00:00',
-    active: true
-  },
-]
+import { useState, useMemo, useEffect } from 'react'
+import { fetchAllDiscounts } from '../services/DiscountService'
 
 export default function Vouchers() {
-  const [vouchers, setVouchers] = useState(initialVouchers)
+  const [vouchers, setVouchers] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [query, setQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingVoucher, setEditingVoucher] = useState(null)
@@ -54,6 +17,41 @@ export default function Vouchers() {
     maxDiscount: '',
     quantity: '',
   })
+
+  // Gọi API lấy danh sách voucher/discount
+  const loadVouchers = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      const data = await fetchAllDiscounts()
+
+      // Map dữ liệu từ API về format dùng trong UI
+      const mapped = data.map((d, index) => ({
+        id: d.id ?? `discount-${index}`,
+        name: d.code ?? 'Không rõ tên',
+        description: d.description ?? '',
+        discount: d.percent ?? d.discountmoney ?? 0,
+        discountType: d.percent ? 'percent' : 'fixed',
+        minOrder: d.minOrderValue ?? 0,
+        maxDiscount: 0, // API không có field này
+        quantity: d.quantity ?? 0,
+        createdAt: d.createdAt,
+        active: d.isActive ?? true,
+      }))
+
+      setVouchers(mapped)
+    } catch (err) {
+      console.error(err)
+      setError('Không tải được danh sách voucher. Vui lòng thử lại.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadVouchers()
+  }, [])
 
   // Lọc voucher theo tên hoặc mô tả
   const filtered = useMemo(() => {
@@ -161,8 +159,12 @@ export default function Vouchers() {
   // Định dạng ngày tháng theo dd/mm/yyyy
   const formatDate = (dateString) => {
     if (!dateString) return ''
-    // Xử lý định dạng "yyyy-mm-dd hh:mm:ss" hoặc các định dạng khác
-    const date = new Date(dateString.replace(/-/g, '/'))
+    
+    // Nếu backend đã trả về đúng format dd/mm/yyyy thì giữ nguyên
+    if (dateString.includes('/')) return dateString
+    
+    // Xử lý định dạng ISO (yyyy-mm-ddThh:mm:ss.sssZ) hoặc "yyyy-mm-dd"
+    const date = new Date(dateString)
     if (isNaN(date.getTime())) return dateString
     
     const day = String(date.getDate()).padStart(2, '0')
@@ -192,9 +194,16 @@ export default function Vouchers() {
             onChange={e => setQuery(e.target.value)}
             style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
           />
-          <button className="btn ghost">Làm mới</button>
+          <button className="btn ghost" onClick={loadVouchers} disabled={loading}>
+            {loading ? 'Đang tải...' : 'Làm mới'}
+          </button>
           <button className="btn primary" onClick={openAddModal}>Thêm voucher</button>
         </div>
+        {error && (
+          <div style={{ marginTop: 8, color: '#fa5252', fontSize: 13 }}>
+            {error}
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ overflow: 'hidden' }}>

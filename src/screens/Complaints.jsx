@@ -1,48 +1,49 @@
-import { useMemo, useState } from 'react'
-
-// Dữ liệu mẫu khiếu nại
-const initialComplaints = [
-  { 
-    id: 'c1', 
-    senderName: 'Nguyễn Văn A', 
-    phone: '0901234567', 
-    content: 'Đơn hàng bị giao sai, thiếu món ăn. Yêu cầu hoàn tiền hoặc giao lại đúng đơn.', 
-    createdAt: '2024-12-15 10:30:00' 
-  },
-  { 
-    id: 'c2', 
-    senderName: 'Trần Thị B', 
-    phone: '0912345678', 
-    content: 'Thức ăn không đảm bảo chất lượng, có mùi lạ. Cần kiểm tra lại nhà hàng.', 
-    createdAt: '2024-12-14 15:20:00' 
-  },
-  { 
-    id: 'c3', 
-    senderName: 'Lê Văn C', 
-    phone: '0933334444', 
-    content: 'Shipper giao hàng quá chậm, đơn hàng đến lúc thức ăn đã nguội. Phản ánh về dịch vụ giao hàng.', 
-    createdAt: '2024-12-13 09:15:00' 
-  },
-  { 
-    id: 'c4', 
-    senderName: 'Phạm Thị D', 
-    phone: '0944445555', 
-    content: 'Ứng dụng bị lỗi khi thanh toán, đã trừ tiền nhưng không tạo được đơn hàng. Cần xử lý gấp.', 
-    createdAt: '2024-12-12 14:45:00' 
-  },
-]
+import { useMemo, useState, useEffect } from 'react'
+import { fetchAllComplaints } from '../services/ComplaintService'
 
 export default function Complaints() {
-  const [complaints, setComplaints] = useState(initialComplaints)
+  const [complaints, setComplaints] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [query, setQuery] = useState('')
 
-  // Lọc khiếu nại theo tên, số điện thoại hoặc nội dung
+  // Gọi API lấy danh sách khiếu nại
+  const loadComplaints = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      const data = await fetchAllComplaints()
+
+      // Map dữ liệu từ API về format dùng trong UI
+      const mapped = data.map((c, index) => ({
+        id: c.id ?? `complaint-${index}`,
+        senderName: c.user?.username ?? 'Không rõ',
+        phone: c.user?.email ?? '', // API không có phone, dùng email thay thế
+        content: c.content ?? '',
+        createdAt: c.createdAt,
+      }))
+
+      setComplaints(mapped)
+    } catch (err) {
+      console.error(err)
+      setError('Không tải được danh sách khiếu nại. Vui lòng thử lại.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadComplaints()
+  }, [])
+
+  // Lọc khiếu nại theo tên, số điện thoại/email hoặc nội dung
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return complaints
     return complaints.filter(c => 
       c.senderName.toLowerCase().includes(q) || 
-      c.phone.includes(q) || 
+      c.phone.toLowerCase().includes(q) || 
       c.content.toLowerCase().includes(q)
     )
   }, [complaints, query])
@@ -56,8 +57,12 @@ export default function Complaints() {
   // Định dạng ngày tháng theo dd/mm/yyyy
   const formatDate = (dateString) => {
     if (!dateString) return ''
-    // Xử lý định dạng "yyyy-mm-dd hh:mm:ss" hoặc "yyyy-mm-dd"
-    const date = new Date(dateString.replace(/-/g, '/'))
+    
+    // Nếu backend đã trả về đúng format dd/mm/yyyy thì giữ nguyên
+    if (dateString.includes('/')) return dateString
+    
+    // Xử lý định dạng ISO (yyyy-mm-ddThh:mm:ss.sssZ) hoặc "yyyy-mm-dd"
+    const date = new Date(dateString)
     if (isNaN(date.getTime())) return dateString
     
     const day = String(date.getDate()).padStart(2, '0')
@@ -71,13 +76,20 @@ export default function Complaints() {
       <div className="card" style={{ padding: 12 }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <input
-            placeholder="Tìm theo tên người gửi/số điện thoại/nội dung"
+            placeholder="Tìm theo tên người gửi/email/nội dung"
             value={query}
             onChange={e => setQuery(e.target.value)}
             style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
           />
-          <button className="btn ghost">Làm mới</button>
+          <button className="btn ghost" onClick={loadComplaints} disabled={loading}>
+            {loading ? 'Đang tải...' : 'Làm mới'}
+          </button>
         </div>
+        {error && (
+          <div style={{ marginTop: 8, color: '#fa5252', fontSize: 13 }}>
+            {error}
+          </div>
+        )}
       </div>
 
       <div className="card" style={{ overflow: 'hidden' }}>
@@ -86,7 +98,7 @@ export default function Complaints() {
             <tr>
               <th style={{ width: 60 }}>STT</th>
               <th>Tên người gửi</th>
-              <th>Số điện thoại</th>
+              <th>Email</th>
               <th>Nội dung khiếu nại</th>
               <th>Ngày gửi</th>
               <th style={{ width: 120 }}>Hành động</th>
