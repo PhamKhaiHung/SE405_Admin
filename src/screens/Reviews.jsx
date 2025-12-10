@@ -1,69 +1,429 @@
-import { useMemo, useState } from 'react'
-
-const initialReviews = [
-  { id: 'c1', user: 'Minh', restaurant: 'Bún Chả Hà Nội 1982', rating: 5, content: 'Ngon, phục vụ nhanh.', hidden: false },
-  { id: 'c2', user: 'Linh', restaurant: 'Cơm Tấm Sài Gòn', rating: 4, content: 'Nước mắm vừa miệng.', hidden: false },
-  { id: 'c3', user: 'Phúc', restaurant: 'Bánh Mì Phượng', rating: 2, content: 'Hơi đông, chờ lâu.', hidden: false },
-]
+import { useMemo, useState, useEffect } from 'react'
+import { fetchAllFeedbacks, deleteFeedback, deleteResponse } from '../services/ReviewService'
+import { fetchRestaurantDetail } from '../services/RestaurantService'
+import { API_CONFIG } from '../config/api'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function Reviews() {
-  const [reviews, setReviews] = useState(initialReviews)
+  const [reviews, setReviews] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const [query, setQuery] = useState('')
+  const [expandedReviews, setExpandedReviews] = useState(new Set())
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
+  const [showConfirmResponseModal, setShowConfirmResponseModal] = useState(false)
+  const [deletingResponseId, setDeletingResponseId] = useState(null)
 
+  // Gọi API lấy danh sách feedbacks
+  const loadReviews = async () => {
+    try {
+      setLoading(true)
+      setError('')
+
+      const data = await fetchAllFeedbacks()
+
+      // Map dữ liệu và lấy tên nhà hàng
+      const mapped = await Promise.all(
+        data.map(async (f, index) => {
+          let restaurantName = 'Không rõ'
+          
+          // Lấy tên nhà hàng từ restaurantId trong order
+          if (f.order && f.order.restaurantId) {
+            try {
+              const restaurant = await fetchRestaurantDetail(f.order.restaurantId)
+              restaurantName = restaurant.name || 'Không rõ'
+            } catch (err) {
+              console.error('Error fetching restaurant:', err)
+            }
+          }
+
+          return {
+            id: f.id ?? `feedback-${index}`,
+            rating: f.rating ?? 0,
+            content: f.content ?? '',
+            imageUrl: f.imageUrl,
+            createdAt: f.createdAt,
+            orderId: f.orderId,
+            restaurantName: restaurantName,
+            restaurantId: f.order?.restaurantId,
+            totalPrice: f.order?.totalPrice ?? 0,
+            responses: f.responses || [],
+            isActive: f.isActive ?? true,
+          }
+        })
+      )
+
+      setReviews(mapped)
+    } catch (err) {
+      console.error(err)
+      setError('Không tải được danh sách bình luận. Vui lòng thử lại.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadReviews()
+  }, [])
+
+  // Lọc review theo nội dung hoặc nhà hàng
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return reviews
-    return reviews.filter(r => [r.user, r.restaurant, r.content].some(x => x.toLowerCase().includes(q)))
+    return reviews.filter(r =>
+      r.content.toLowerCase().includes(q) ||
+      r.restaurantName.toLowerCase().includes(q)
+    )
   }, [reviews, query])
 
-  const hideReview = (id) => setReviews(prev => prev.map(r => r.id === id ? { ...r, hidden: true } : r))
-  const deleteReview = (id) => {
-    if (!confirm('Bạn có chắc muốn xoá bình luận này?')) return
-    setReviews(prev => prev.filter(r => r.id !== id))
+  // Toggle hiển thị responses
+  const toggleExpand = (id) => {
+    setExpandedReviews(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(id)) {
+        newSet.delete(id)
+      } else {
+        newSet.add(id)
+      }
+      return newSet
+    })
+  }
+
+  // Mở modal xác nhận xóa
+  const openDeleteConfirm = (id) => {
+    setDeletingId(id)
+    setShowConfirmModal(true)
+  }
+
+  // Xóa review thông qua API
+  const deleteReview = async () => {
+    if (!deletingId) return
+
+    try {
+      setLoading(true)
+      setError('')
+
+      await deleteFeedback(deletingId)
+
+      // Tải lại danh sách sau khi xóa thành công
+      await loadReviews()
+      setDeletingId(null)
+    } catch (err) {
+      console.error(err)
+      setError('Không thể xóa bình luận. Vui lòng thử lại.')
+      alert('Có lỗi xảy ra: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Mở modal xác nhận xóa response
+  const openDeleteResponseConfirm = (responseId) => {
+    setDeletingResponseId(responseId)
+    setShowConfirmResponseModal(true)
+  }
+
+  // Xóa response thông qua API
+  const deleteResponseHandler = async () => {
+    if (!deletingResponseId) return
+
+    try {
+      setLoading(true)
+      setError('')
+
+      await deleteResponse(deletingResponseId)
+
+      // Tải lại danh sách sau khi xóa thành công
+      await loadReviews()
+      setDeletingResponseId(null)
+    } catch (err) {
+      console.error(err)
+      setError('Không thể xóa phản hồi. Vui lòng thử lại.')
+      alert('Có lỗi xảy ra: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Format ngày tháng
+  const formatDate = (dateString) => {
+    if (!dateString) return ''
+    if (dateString.includes('/')) return dateString
+
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return dateString
+
+    const day = String(date.getDate()).padStart(2, '0')
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+  }
+
+  // Lấy URL ảnh
+  const getImageUrl = (imageUrl) => {
+    if (!imageUrl) return null
+    return API_CONFIG.getFullUrl(imageUrl)
+  }
+
+  // Render rating stars
+  const renderStars = (rating) => {
+    const stars = []
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <span
+          key={i}
+          style={{
+            color: i <= rating ? '#ffd43b' : '#444',
+            fontSize: 16,
+          }}
+        >
+          ★
+        </span>
+      )
+    }
+    return stars
   }
 
   return (
     <div className="grid" style={{ gap: 12 }}>
       <div className="card" style={{ padding: 12 }}>
-        <input
-          placeholder="Tìm theo người dùng/nhà hàng/nội dung"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
-        />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <input
+            placeholder="Tìm theo nội dung/cửa hàng"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              borderRadius: 8,
+              border: '1px solid var(--color-border)',
+              background: '#111216',
+              color: 'var(--color-text)',
+            }}
+          />
+          <button className="btn ghost" onClick={loadReviews} disabled={loading}>
+            {loading ? 'Đang tải...' : 'Làm mới'}
+          </button>
+        </div>
+        {error && (
+          <div style={{ marginTop: 8, color: '#fa5252', fontSize: 13 }}>
+            {error}
+          </div>
+        )}
       </div>
 
-      <div className="card" style={{ overflow: 'hidden' }}>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Người dùng</th>
-              <th>Cửa hàng</th>
-              <th>Điểm</th>
-              <th>Nội dung</th>
-              <th style={{ width: 200 }}>Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(r => (
-              <tr key={r.id}>
-                <td>{r.user}</td>
-                <td>{r.restaurant}</td>
-                <td><span className="badge warn">{r.rating}</span></td>
-                <td style={{ color: r.hidden ? '#777' : 'var(--color-text)' }}>{r.hidden ? '(Đã ẩn) ' : ''}{r.content}</td>
-                <td>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn" onClick={() => hideReview(r.id)} disabled={r.hidden}>Ẩn</button>
-                    <button className="btn danger" onClick={() => deleteReview(r.id)}>Xoá</button>
+      <div className="grid" style={{ gap: 12 }}>
+        {filtered.length === 0 ? (
+          <div
+            className="card"
+            style={{
+              padding: 48,
+              textAlign: 'center',
+              color: 'var(--color-text-muted)',
+            }}
+          >
+            Không có bình luận nào
+          </div>
+        ) : (
+          filtered.map(review => (
+            <div
+              key={review.id}
+              className="card"
+              style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}
+            >
+              {/* Header: Restaurant + Rating + Date */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 600, marginBottom: 4 }}>
+                    {review.restaurantName}
                   </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div>{renderStars(review.rating)}</div>
+                    <span className="badge warn">{review.rating}/5</span>
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', fontSize: 13, color: 'var(--color-text-muted)' }}>
+                  {formatDate(review.createdAt)}
+                </div>
+              </div>
+
+              {/* Content */}
+              <div style={{ color: 'var(--color-text)' }}>
+                {review.content}
+              </div>
+
+              {/* Image if exists */}
+              {review.imageUrl && (
+                <div>
+                  <img
+                    src={getImageUrl(review.imageUrl)}
+                    alt="Review"
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                    }}
+                    style={{
+                      maxWidth: 200,
+                      maxHeight: 200,
+                      borderRadius: 8,
+                      objectFit: 'cover',
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Order info */}
+              <div style={{ fontSize: 13, color: 'var(--color-text-muted)' }}>
+                Đơn hàng #{review.orderId} • {review.totalPrice.toLocaleString('vi-VN')}đ
+              </div>
+
+              {/* Responses section */}
+              {review.responses.length > 0 && (
+                <div>
+                  <button
+                    className="btn ghost"
+                    onClick={() => toggleExpand(review.id)}
+                    style={{ fontSize: 13 }}
+                  >
+                    {expandedReviews.has(review.id)
+                      ? `Ẩn phản hồi (${review.responses.length})`
+                      : `Xem phản hồi (${review.responses.length})`}
+                  </button>
+
+                  {expandedReviews.has(review.id) && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        paddingLeft: 16,
+                        borderLeft: '3px solid var(--color-border)',
+                      }}
+                    >
+                      {review.responses.map((resp) => (
+                        <div
+                          key={resp.id}
+                          style={{
+                            padding: 12,
+                            background: '#0d0e12',
+                            borderRadius: 8,
+                            marginBottom: 8,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              marginBottom: 8,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                              }}
+                            >
+                              {resp.sender?.avatar && (
+                                <img
+                                  src={getImageUrl(resp.sender.avatar)}
+                                  alt={resp.sender.username}
+                                  onError={(e) => {
+                                    e.target.src = API_CONFIG.PLACEHOLDER_IMAGE
+                                  }}
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: '50%',
+                                    objectFit: 'cover',
+                                  }}
+                                />
+                              )}
+                              <div>
+                                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                                  {resp.sender?.username || 'Chủ cửa hàng'}
+                                </div>
+                                <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                  {formatDate(resp.createdAt)}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              className="btn danger"
+                              onClick={() => openDeleteResponseConfirm(resp.id)}
+                              disabled={loading}
+                              style={{ fontSize: 13, padding: '6px 12px' }}
+                            >
+                              Xóa
+                            </button>
+                          </div>
+                          <div style={{ fontSize: 14 }}>{resp.response}</div>
+                          {resp.imageUrl && (
+                            <img
+                              src={getImageUrl(resp.imageUrl)}
+                              alt="Response"
+                              onError={(e) => {
+                                e.target.style.display = 'none'
+                              }}
+                              style={{
+                                marginTop: 8,
+                                maxWidth: 150,
+                                maxHeight: 150,
+                                borderRadius: 8,
+                                objectFit: 'cover',
+                              }}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button
+                  className="btn danger"
+                  onClick={() => openDeleteConfirm(review.id)}
+                  disabled={loading}
+                >
+                  Xóa
+                </button>
+              </div>
+            </div>
+          ))
+        )}
       </div>
+
+      {/* Modal xác nhận xóa bình luận */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false)
+          setDeletingId(null)
+        }}
+        onConfirm={deleteReview}
+        title="Xóa bình luận"
+        message="Bạn có chắc chắn muốn xóa bình luận này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
+
+      {/* Modal xác nhận xóa phản hồi */}
+      <ConfirmModal
+        isOpen={showConfirmResponseModal}
+        onClose={() => {
+          setShowConfirmResponseModal(false)
+          setDeletingResponseId(null)
+        }}
+        onConfirm={deleteResponseHandler}
+        title="Xóa phản hồi"
+        message="Bạn có chắc chắn muốn xóa phản hồi này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
     </div>
   )
 }
-
-

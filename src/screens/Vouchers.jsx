@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
-import { fetchAllDiscounts } from '../services/DiscountService'
+import { fetchAllDiscounts, createDiscount, updateDiscount, deleteDiscount } from '../services/DiscountService'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function Vouchers() {
   const [vouchers, setVouchers] = useState([])
@@ -8,13 +9,14 @@ export default function Vouchers() {
   const [query, setQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [editingVoucher, setEditingVoucher] = useState(null)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     discount: '',
     discountType: 'percent',
     minOrder: '',
-    maxDiscount: '',
     quantity: '',
   })
 
@@ -34,7 +36,6 @@ export default function Vouchers() {
         discount: d.percent ?? d.discountmoney ?? 0,
         discountType: d.percent ? 'percent' : 'fixed',
         minOrder: d.minOrderValue ?? 0,
-        maxDiscount: 0, // API không có field này
         quantity: d.quantity ?? 0,
         createdAt: d.createdAt,
         active: d.isActive ?? true,
@@ -72,7 +73,6 @@ export default function Vouchers() {
       discount: '',
       discountType: 'percent',
       minOrder: '',
-      maxDiscount: '',
       quantity: '',
     })
     setShowModal(true)
@@ -87,7 +87,6 @@ export default function Vouchers() {
       discount: voucher.discount.toString(),
       discountType: voucher.discountType,
       minOrder: voucher.minOrder.toString(),
-      maxDiscount: voucher.maxDiscount.toString(),
       quantity: voucher.quantity?.toString() || '',
     })
     setShowModal(true)
@@ -103,57 +102,108 @@ export default function Vouchers() {
       discount: '',
       discountType: 'percent',
       minOrder: '',
-      maxDiscount: '',
       quantity: '',
     })
   }
 
   // Lưu voucher (thêm mới hoặc cập nhật)
-  const saveVoucher = () => {
+  const saveVoucher = async () => {
     if (!formData.name.trim() || !formData.description.trim()) {
       alert('Vui lòng điền đầy đủ thông tin')
       return
     }
 
-    if (editingVoucher) {
-      // Cập nhật voucher
-      setVouchers(prev => prev.map(v => 
-        v.id === editingVoucher.id 
-          ? {
-              ...v,
-              name: formData.name,
-              description: formData.description,
-              discount: parseFloat(formData.discount) || 0,
-              discountType: formData.discountType,
-              minOrder: parseFloat(formData.minOrder) || 0,
-              maxDiscount: parseFloat(formData.maxDiscount) || 0,
-              quantity: parseInt(formData.quantity) || 0,
-            }
-          : v
-      ))
-    } else {
-      // Thêm voucher mới
-      const newVoucher = {
-        id: `v${Date.now()}`,
-        name: formData.name,
-        description: formData.description,
-        discount: parseFloat(formData.discount) || 0,
-        discountType: formData.discountType,
-        minOrder: parseFloat(formData.minOrder) || 0,
-        maxDiscount: parseFloat(formData.maxDiscount) || 0,
-        quantity: parseInt(formData.quantity) || 0,
-        createdAt: new Date().toISOString().split('T')[0] + ' ' + new Date().toTimeString().split(' ')[0],
-        active: true,
-      }
-      setVouchers(prev => [...prev, newVoucher])
+    if (formData.discountType !== 'freeship' && !formData.discount) {
+      alert('Vui lòng nhập giá trị giảm giá')
+      return
     }
-    closeModal()
+
+    if (!formData.quantity || parseInt(formData.quantity) <= 0) {
+      alert('Vui lòng nhập số lượng hợp lệ')
+      return
+    }
+
+    try {
+      setLoading(true)
+      setError('')
+
+      // Chuẩn bị dữ liệu theo format API
+      // type = 1: giảm %, type = 2: giảm tiền, type = 3: freeship
+      let type = 1
+      let percent = null
+      let discountmoney = null
+
+      if (formData.discountType === 'percent') {
+        type = 1
+        percent = parseFloat(formData.discount) || 0
+      } else if (formData.discountType === 'fixed') {
+        type = 2
+        discountmoney = parseFloat(formData.discount) || 0
+      } else if (formData.discountType === 'freeship') {
+        type = 3
+        percent = null
+        discountmoney = null
+      }
+
+      const apiData = {
+        code: formData.name,
+        type: type,
+        description: formData.description,
+        percent: percent,
+        discountmoney: discountmoney,
+        minOrderValue: parseFloat(formData.minOrder) || 0,
+        quantity: parseInt(formData.quantity) || 0,
+        startTime: new Date().toISOString(),
+        endTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // +1 năm
+        status: 'ACTIVE',
+      }
+
+      if (editingVoucher) {
+        // Cập nhật voucher qua API
+        await updateDiscount(editingVoucher.id, apiData)
+      } else {
+        // Thêm voucher mới qua API
+        await createDiscount(apiData)
+      }
+
+      // Tải lại danh sách sau khi thành công
+      await loadVouchers()
+      closeModal()
+    } catch (err) {
+      console.error(err)
+      setError('Không thể lưu voucher. Vui lòng thử lại.')
+      alert('Có lỗi xảy ra: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  // Xóa voucher
-  const deleteVoucher = (id) => {
-    if (!confirm('Bạn có chắc muốn xóa voucher này?')) return
-    setVouchers(prev => prev.filter(v => v.id !== id))
+  // Mở modal xác nhận xóa
+  const openDeleteConfirm = (id) => {
+    setDeletingId(id)
+    setShowConfirmModal(true)
+  }
+
+  // Xóa voucher (set isActive = false qua API)
+  const deleteVoucherHandler = async () => {
+    if (!deletingId) return
+
+    try {
+      setLoading(true)
+      setError('')
+
+      await deleteDiscount(deletingId)
+
+      // Tải lại danh sách sau khi xóa
+      await loadVouchers()
+      setDeletingId(null)
+    } catch (err) {
+      console.error(err)
+      setError('Không thể xóa voucher. Vui lòng thử lại.')
+      alert('Có lỗi xảy ra: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Định dạng ngày tháng theo dd/mm/yyyy
@@ -247,12 +297,14 @@ export default function Vouchers() {
                       <button 
                         className="btn equal" 
                         onClick={() => openEditModal(voucher)}
+                        disabled={loading}
                       >
                         Sửa
                       </button>
                       <button 
                         className="btn danger" 
-                        onClick={() => deleteVoucher(voucher.id)}
+                        onClick={() => openDeleteConfirm(voucher.id)}
+                        disabled={loading}
                       >
                         Xóa
                       </button>
@@ -279,6 +331,7 @@ export default function Vouchers() {
             alignItems: 'center',
             justifyContent: 'center',
             zIndex: 1000,
+            padding: '20px',
           }}
           onClick={closeModal}
         >
@@ -287,8 +340,10 @@ export default function Vouchers() {
             style={{ 
               width: '90%', 
               maxWidth: 500, 
+              maxHeight: '90vh',
               padding: 24,
               background: 'var(--color-surface)',
+              overflowY: 'auto',
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -368,22 +423,6 @@ export default function Vouchers() {
                 />
               </div>
 
-              {formData.discountType === 'percent' && (
-                <div>
-                  <label style={{ display: 'block', marginBottom: 8, color: 'var(--color-text-muted)' }}>
-                    Giảm tối đa (đ)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.maxDiscount}
-                    onChange={e => setFormData({ ...formData, maxDiscount: e.target.value })}
-                    placeholder="50000"
-                    min="0"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
-                  />
-                </div>
-              )}
-
               <div>
                 <label style={{ display: 'block', marginBottom: 8, color: 'var(--color-text-muted)' }}>
                   Số lượng *
@@ -400,14 +439,29 @@ export default function Vouchers() {
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 24, justifyContent: 'flex-end' }}>
-              <button className="btn ghost" onClick={closeModal}>Hủy</button>
-              <button className="btn primary" onClick={saveVoucher}>
-                {editingVoucher ? 'Cập nhật' : 'Thêm mới'}
+              <button className="btn ghost" onClick={closeModal} disabled={loading}>Hủy</button>
+              <button className="btn primary" onClick={saveVoucher} disabled={loading}>
+                {loading ? 'Đang lưu...' : (editingVoucher ? 'Cập nhật' : 'Thêm mới')}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Modal xác nhận xóa */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false)
+          setDeletingId(null)
+        }}
+        onConfirm={deleteVoucherHandler}
+        title="Xóa voucher"
+        message="Bạn có chắc chắn muốn xóa voucher này? Voucher sẽ bị vô hiệu hóa và không thể sử dụng nữa."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
     </div>
   )
 }
