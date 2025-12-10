@@ -1,11 +1,14 @@
 import { useMemo, useState, useEffect } from 'react'
-import { fetchAllComplaints } from '../services/ComplaintService'
+import { fetchAllComplaints, deleteComplaint as deleteComplaintAPI } from '../services/ComplaintService'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function Complaints() {
   const [complaints, setComplaints] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [query, setQuery] = useState('')
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [deletingId, setDeletingId] = useState(null)
 
   // Gọi API lấy danh sách khiếu nại
   const loadComplaints = async () => {
@@ -48,10 +51,32 @@ export default function Complaints() {
     )
   }, [complaints, query])
 
-  // Xóa khiếu nại
-  const deleteComplaint = (id) => {
-    if (!confirm('Bạn có chắc muốn xóa khiếu nại này?')) return
-    setComplaints(prev => prev.filter(c => c.id !== id))
+  // Mở modal xác nhận xóa
+  const openDeleteConfirm = (id) => {
+    setDeletingId(id)
+    setShowConfirmModal(true)
+  }
+
+  // Xóa khiếu nại thông qua API
+  const deleteComplaint = async () => {
+    if (!deletingId) return
+
+    try {
+      setLoading(true)
+      setError('')
+
+      await deleteComplaintAPI(deletingId)
+
+      // Tải lại danh sách sau khi xóa thành công
+      await loadComplaints()
+      setDeletingId(null)
+    } catch (err) {
+      console.error(err)
+      setError('Không thể xóa khiếu nại. Vui lòng thử lại.')
+      alert('Có lỗi xảy ra: ' + err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   // Định dạng ngày tháng theo dd/mm/yyyy
@@ -122,7 +147,8 @@ export default function Complaints() {
                   <td>
                     <button 
                       className="btn danger" 
-                      onClick={() => deleteComplaint(complaint.id)}
+                      onClick={() => openDeleteConfirm(complaint.id)}
+                      disabled={loading}
                     >
                       Xóa
                     </button>
@@ -133,6 +159,21 @@ export default function Complaints() {
           </tbody>
         </table>
       </div>
+
+      {/* Modal xác nhận xóa */}
+      <ConfirmModal
+        isOpen={showConfirmModal}
+        onClose={() => {
+          setShowConfirmModal(false)
+          setDeletingId(null)
+        }}
+        onConfirm={deleteComplaint}
+        title="Xóa khiếu nại"
+        message="Bạn có chắc chắn muốn xóa khiếu nại này? Hành động này không thể hoàn tác."
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+      />
     </div>
   )
 }

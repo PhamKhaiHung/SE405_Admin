@@ -33,3 +33,36 @@ export async function fetchAllComplaints() {
   }
 }
 
+/**
+ * Xóa khiếu nại/báo cáo
+ * @param {number} complaintId - ID khiếu nại
+ * @returns {Promise<Object>} Kết quả xóa
+ */
+export async function deleteComplaint(complaintId) {
+  const url = `${API_BASE_URL}/complaints-reports/${complaintId}`
+
+  try {
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        accept: '*/*',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`)
+    }
+
+    // Một số API DELETE trả về 204 No Content, không có body
+    if (response.status === 204) {
+      return null
+    }
+
+    // Nếu có body, parse JSON
+    return await response.json().catch(() => null)
+  } catch (error) {
+    console.error('deleteComplaint error:', error)
+    throw error
+  }
+}
+
