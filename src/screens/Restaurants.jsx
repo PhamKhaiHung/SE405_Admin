@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { fetchAllRestaurants, updateRestaurantStatus } from '../services/RestaurantService'
+import { API_CONFIG } from '../config/api'
 
 export default function Restaurants() {
   const [restaurants, setRestaurants] = useState([])
@@ -26,18 +27,24 @@ export default function Restaurants() {
     // Chỉ hiển thị các phần có giá trị, không hiển thị gì nếu không có
     return parts.length > 0 ? parts.join(', ') : (addressObj.label || '')
   } 
-  // Hàm lấy URL avatar an toàn
+  // Hàm lấy URL avatar an toàn và ghép với base URL backend
   const getAvatarUrl = (avatarData) => {
-    // Nếu là string thì trả về luôn
-    if (typeof avatarData === 'string') return avatarData
+    if (!avatarData) {
+      return API_CONFIG.PLACEHOLDER_IMAGE
+    }
+    
+    // Nếu là string
+    if (typeof avatarData === 'string') {
+      return API_CONFIG.getFullUrl(avatarData)
+    }
     
     // Nếu là object có thuộc tính url
     if (avatarData && typeof avatarData === 'object' && avatarData.url) {
-      return avatarData.url
+      return API_CONFIG.getFullUrl(avatarData.url)
     }
     
     // Fallback về ảnh mặc định
-    return 'https://picsum.photos/seed/restaurant/80'
+    return API_CONFIG.PLACEHOLDER_IMAGE
   }
 
   // Gọi API lấy danh sách nhà hàng
@@ -147,7 +154,15 @@ export default function Restaurants() {
             {filtered.map(r => (
               <tr key={r.id}>
                 <td>
-                  <img src={r.avatar} alt={r.name} style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} />
+                  <img 
+                    src={r.avatar} 
+                    alt={r.name} 
+                    onError={(e) => {
+                      e.target.onerror = null // Tránh loop vô hạn
+                      e.target.src = API_CONFIG.PLACEHOLDER_IMAGE
+                    }}
+                    style={{ width: 40, height: 40, borderRadius: 8, objectFit: 'cover' }} 
+                  />
                 </td>
                 <td>{r.name}</td>
                 <td>{r.address}</td>

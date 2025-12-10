@@ -34,6 +34,34 @@ export async function fetchAllRestaurants() {
 }
 
 /**
+ * Lấy thông tin chi tiết nhà hàng
+ * @param {string|number} restaurantId - id nhà hàng
+ * @returns {Promise<Object>} Thông tin chi tiết nhà hàng
+ */
+export async function fetchRestaurantDetail(restaurantId) {
+  const url = `${API_BASE_URL}/restaurants/${restaurantId}`
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        accept: '*/*',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`)
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('fetchRestaurantDetail error:', error)
+    throw error
+  }
+}
+
+/**
  * Cập nhật trạng thái hoạt động của nhà hàng
  * @param {string|number} restaurantId - id nhà hàng (dùng trong URL /restaurants/{id}/status)
  * @param {boolean} isActive - trạng thái mới
