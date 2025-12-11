@@ -122,8 +122,8 @@ export default function Restaurants() {
               flex: 1,
               padding: '10px 12px',
               borderRadius: 8,
-              border: '1px solid var(--color-border)',
-              background: '#111216',
+              border: '1px solid #000',
+              background: 'var(--color-surface)',
               color: 'var(--color-text)',
             }}
           />
@@ -134,7 +134,7 @@ export default function Restaurants() {
         {error && (
           <div style={{ marginTop: 8, color: '#fa5252', fontSize: 13 }}>
             {error}
-          </div>
+        </div>
         )}
       </div>
 

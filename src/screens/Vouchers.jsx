@@ -20,6 +20,13 @@ export default function Vouchers() {
     quantity: '',
   })
 
+  const sanitizeNumber = (val, allowDecimal = false) => {
+    if (val === '') return ''
+    return allowDecimal
+      ? val.replace(/[^0-9.]/g, '')
+      : val.replace(/\\D/g, '')
+  }
+
   // Gọi API lấy danh sách voucher/discount
   const loadVouchers = async () => {
     try {
@@ -108,51 +115,64 @@ export default function Vouchers() {
 
   // Lưu voucher (thêm mới hoặc cập nhật)
   const saveVoucher = async () => {
+    // Validate chung
     if (!formData.name.trim() || !formData.description.trim()) {
       alert('Vui lòng điền đầy đủ thông tin')
       return
     }
 
-    if (formData.discountType !== 'freeship' && !formData.discount) {
-      alert('Vui lòng nhập giá trị giảm giá')
+    const quantityNum = Number(formData.quantity)
+    if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
+      alert('Vui lòng nhập số lượng hợp lệ (> 0)')
       return
     }
 
-    if (!formData.quantity || parseInt(formData.quantity) <= 0) {
-      alert('Vui lòng nhập số lượng hợp lệ')
+    const minOrderNum = Number(formData.minOrder || 0)
+    if (!Number.isFinite(minOrderNum) || minOrderNum < 0) {
+      alert('Vui lòng nhập đơn hàng tối thiểu hợp lệ (>= 0)')
       return
+    }
+
+    let type = 1
+    let percent = null
+    let discountmoney = null
+
+    if (formData.discountType === 'percent') {
+      type = 1
+      const percentNum = Number(formData.discount)
+      if (!Number.isFinite(percentNum) || percentNum <= 0) {
+        alert('Vui lòng nhập % giảm hợp lệ (> 0)')
+        return
+      }
+      percent = percentNum
+      discountmoney = null
+    } else if (formData.discountType === 'fixed') {
+      type = 2
+      const fixedNum = Number(formData.discount)
+      if (!Number.isFinite(fixedNum) || fixedNum <= 0) {
+        alert('Vui lòng nhập số tiền giảm hợp lệ (> 0)')
+        return
+      }
+      discountmoney = fixedNum
+      percent = null
+    } else if (formData.discountType === 'freeship') {
+      type = 3
+      percent = null
+      discountmoney = null
     }
 
     try {
       setLoading(true)
       setError('')
 
-      // Chuẩn bị dữ liệu theo format API
-      // type = 1: giảm %, type = 2: giảm tiền, type = 3: freeship
-      let type = 1
-      let percent = null
-      let discountmoney = null
-
-      if (formData.discountType === 'percent') {
-        type = 1
-        percent = parseFloat(formData.discount) || 0
-      } else if (formData.discountType === 'fixed') {
-        type = 2
-        discountmoney = parseFloat(formData.discount) || 0
-      } else if (formData.discountType === 'freeship') {
-        type = 3
-        percent = null
-        discountmoney = null
-      }
-
       const apiData = {
         code: formData.name,
-        type: type,
+        type,
         description: formData.description,
-        percent: percent,
-        discountmoney: discountmoney,
-        minOrderValue: parseFloat(formData.minOrder) || 0,
-        quantity: parseInt(formData.quantity) || 0,
+        percent,
+        discountmoney,
+        minOrderValue: minOrderNum,
+        quantity: quantityNum,
         startTime: new Date().toISOString(),
         endTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // +1 năm
         status: 'ACTIVE',
@@ -242,7 +262,7 @@ export default function Vouchers() {
             placeholder="Tìm theo tên hoặc mô tả voucher"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #000', background: 'var(--color-surface)', color: 'var(--color-text)' }}
           />
           <button className="btn ghost" onClick={loadVouchers} disabled={loading}>
             {loading ? 'Đang tải...' : 'Làm mới'}
@@ -361,7 +381,7 @@ export default function Vouchers() {
                   value={formData.name}
                   onChange={e => setFormData({ ...formData, name: e.target.value })}
                   placeholder="Ví dụ: Giảm 20% tất cả món ăn"
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #000', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                 />
               </div>
 
@@ -374,7 +394,7 @@ export default function Vouchers() {
                   onChange={e => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Mô tả chi tiết về voucher"
                   rows={3}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)', resize: 'vertical', fontFamily: 'inherit' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #000', background: 'var(--color-surface)', color: 'var(--color-text)', resize: 'vertical', fontFamily: 'inherit' }}
                 />
               </div>
 
@@ -384,8 +404,9 @@ export default function Vouchers() {
                 </label>
                 <select
                   value={formData.discountType}
+                  disabled={!!editingVoucher}
                   onChange={e => setFormData({ ...formData, discountType: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #000', background: 'var(--color-surface)', color: 'var(--color-text)', cursor: editingVoucher ? 'not-allowed' : 'pointer', opacity: editingVoucher ? 0.7 : 1 }}
                 >
                   <option value="percent">Phần trăm (%)</option>
                   <option value="fixed">Số tiền cố định (đ)</option>
@@ -401,10 +422,10 @@ export default function Vouchers() {
                   <input
                     type="number"
                     value={formData.discount}
-                    onChange={e => setFormData({ ...formData, discount: e.target.value })}
+                    onChange={e => setFormData({ ...formData, discount: sanitizeNumber(e.target.value, true) })}
                     placeholder={formData.discountType === 'percent' ? '20' : '50000'}
                     min="0"
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #000', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                   />
                 </div>
               )}
@@ -416,10 +437,10 @@ export default function Vouchers() {
                 <input
                   type="number"
                   value={formData.minOrder}
-                  onChange={e => setFormData({ ...formData, minOrder: e.target.value })}
+                  onChange={e => setFormData({ ...formData, minOrder: sanitizeNumber(e.target.value) })}
                   placeholder="0"
                   min="0"
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #000', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                 />
               </div>
 
@@ -430,10 +451,10 @@ export default function Vouchers() {
                 <input
                   type="number"
                   value={formData.quantity}
-                  onChange={e => setFormData({ ...formData, quantity: e.target.value })}
+                  onChange={e => setFormData({ ...formData, quantity: sanitizeNumber(e.target.value) })}
                   placeholder="100"
                   min="0"
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #000', background: 'var(--color-surface)', color: 'var(--color-text)' }}
                 />
               </div>
             </div>

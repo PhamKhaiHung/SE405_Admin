@@ -197,8 +197,8 @@ export default function Reviews() {
               flex: 1,
               padding: '10px 12px',
               borderRadius: 8,
-              border: '1px solid var(--color-border)',
-              background: '#111216',
+              border: '1px solid #000',
+              background: 'var(--color-surface)',
               color: 'var(--color-text)',
             }}
           />

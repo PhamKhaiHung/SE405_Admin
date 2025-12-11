@@ -93,7 +93,7 @@ export default function Users() {
             placeholder="Tìm theo tên/email/điện thoại"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: '#111216', color: 'var(--color-text)' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #000', background: 'var(--color-surface)', color: 'var(--color-text)' }}
           />
           <button className="btn ghost" onClick={loadUsers} disabled={loading}>
             {loading ? 'Đang tải...' : 'Làm mới'}
@@ -102,7 +102,7 @@ export default function Users() {
         {error && (
           <div style={{ marginTop: 8, color: '#fa5252', fontSize: 13 }}>
             {error}
-          </div>
+        </div>
         )}
       </div>
 

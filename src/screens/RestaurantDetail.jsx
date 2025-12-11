@@ -91,7 +91,7 @@ export default function RestaurantDetail() {
   return (
     <div className="grid" style={{ gap: 20 }}>
       {/* Nút quay lại */}
-      <div>
+          <div>
         <Link to="/restaurants" className="btn ghost">← Quay lại danh sách</Link>
       </div>
 
@@ -125,7 +125,7 @@ export default function RestaurantDetail() {
             <div style={{ fontSize: 17, color: 'rgba(255,255,255,0.85)', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 20 }}>📍</span>
               {data.address || 'Chưa cập nhật địa chỉ'}
-            </div>
+        </div>
             
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
               <span className="badge warn" style={{ fontSize: 16, padding: '8px 16px', background: 'rgba(255,176,0,0.2)', borderColor: 'rgba(255,176,0,0.4)' }}>
@@ -151,7 +151,7 @@ export default function RestaurantDetail() {
             <div style={{ padding: 16, background: 'rgba(229,56,59,0.05)', borderRadius: 12, border: '1px solid rgba(229,56,59,0.2)' }}>
               <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 8 }}>Số điện thoại</div>
               <div style={{ fontSize: 18, fontWeight: 600 }}>📞 {data.phone || 'Chưa cập nhật'}</div>
-            </div>
+          </div>
             <div style={{ padding: 16, background: 'rgba(229,56,59,0.05)', borderRadius: 12, border: '1px solid rgba(229,56,59,0.2)' }}>
               <div style={{ fontSize: 13, color: 'var(--color-text-muted)', marginBottom: 8 }}>Giờ mở cửa</div>
               <div style={{ fontSize: 18, fontWeight: 600 }}>
@@ -192,7 +192,7 @@ export default function RestaurantDetail() {
               <div style={{ fontSize: 20, fontWeight: 600 }}>{data.owner.name}</div>
               <div style={{ color: 'var(--color-text-muted)', fontSize: 15 }}>✉️ {data.owner.email}</div>
               <div style={{ color: 'var(--color-text-muted)', fontSize: 15 }}>📞 {data.owner.phone}</div>
-            </div>
+          </div>
           </div>
         </div>
       )}
@@ -262,15 +262,15 @@ export default function RestaurantDetail() {
                     WebkitBoxOrient: 'vertical',
                   }}>
                     {item.name}
-                  </div>
+          </div>
                   <div style={{ fontSize: 18, color: 'var(--color-primary-500)', fontWeight: 700, marginBottom: 6 }}>
                     {formatCurrency(item.price)}
-                  </div>
+          </div>
                   <span className={`badge ${item.available ? 'success' : 'danger'}`} style={{ fontSize: 12 }}>
                     {item.available ? '✓ Còn hàng' : '✕ Hết hàng'}
                   </span>
-                </div>
-              </div>
+        </div>
+      </div>
             ))}
           </div>
         ) : (

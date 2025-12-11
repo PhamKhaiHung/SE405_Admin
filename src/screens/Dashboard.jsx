@@ -131,11 +131,13 @@ export default function Dashboard() {
             onChange={(e) => setYear(Number(e.target.value))} 
             disabled={loading}
             style={{ 
-              padding: '8px 10px', 
-              borderRadius: 8, 
-              background: '#0f1013', 
+              width: 'auto',
+              padding: '10px 12px', 
+              borderRadius: 10, 
+              background: '#fff', 
               color: 'var(--color-text)', 
-              border: '1px solid var(--color-border)',
+              border: '2px solid var(--color-primary-500)',
+              minWidth: 140,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.6 : 1,
             }}
@@ -182,11 +184,13 @@ export default function Dashboard() {
             onChange={(e) => setYear(Number(e.target.value))} 
             disabled={loading}
             style={{ 
-              padding: '8px 10px', 
-              borderRadius: 8, 
-              background: '#0f1013', 
+              width: 'auto',
+              padding: '10px 12px', 
+              borderRadius: 10, 
+              background: '#fff', 
               color: 'var(--color-text)', 
-              border: '1px solid var(--color-border)',
+              border: '2px solid var(--color-primary-500)',
+              minWidth: 140,
               cursor: loading ? 'not-allowed' : 'pointer',
               opacity: loading ? 0.6 : 1,
             }}
