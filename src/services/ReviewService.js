@@ -1,18 +1,32 @@
 const API_BASE_URL = 'http://localhost:5000'
 
 /**
+ * Lấy token từ localStorage
+ * @returns {string|null} Token hoặc null
+ */
+function getToken() {
+  return localStorage.getItem('accessToken')
+}
+
+/**
  * Gọi API lấy tất cả đánh giá/bình luận (feedbacks)
  * @returns {Promise<Array>} Danh sách feedback từ backend
  */
 export async function fetchAllFeedbacks() {
   const url = `${API_BASE_URL}/feedbacks`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        accept: '*/*',
-      },
+      headers,
     })
 
     if (!response.ok) {
@@ -40,13 +54,19 @@ export async function fetchAllFeedbacks() {
  */
 export async function deleteFeedback(feedbackId) {
   const url = `${API_BASE_URL}/feedbacks/${feedbackId}`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'DELETE',
-      headers: {
-        accept: '*/*',
-      },
+      headers,
     })
 
     if (!response.ok) {
@@ -71,13 +91,19 @@ export async function deleteFeedback(feedbackId) {
  */
 export async function deleteResponse(responseId) {
   const url = `${API_BASE_URL}/feedbacks/${responseId}`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'DELETE',
-      headers: {
-        accept: '*/*',
-      },
+      headers,
     })
 
     if (!response.ok) {

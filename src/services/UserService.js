@@ -1,18 +1,32 @@
 const API_BASE_URL = 'http://localhost:5000'
 
 /**
+ * Lấy token từ localStorage
+ * @returns {string|null} Token hoặc null
+ */
+function getToken() {
+  return localStorage.getItem('accessToken')
+}
+
+/**
  * Gọi API lấy tất cả người dùng
  * @returns {Promise<Array>} Danh sách người dùng từ backend
  */
 export async function fetchAllUsers() {
   const url = `${API_BASE_URL}/users/all`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        accept: 'application/json',
-      },
+      headers,
     })
 
     if (!response.ok) {
@@ -41,16 +55,20 @@ export async function fetchAllUsers() {
  */
 export async function updateUserStatus(userId, isActive) {
   const url = `${API_BASE_URL}/users/${userId}/status`
+  const token = getToken()
 
   try {
-    console.log(url)
-    console.log(isActive)
+    const headers = {
+      accept: '*/*',
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'PATCH',
-      headers: {
-        accept: '*/*',
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ isActive }),
     })
 

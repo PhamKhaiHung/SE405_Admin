@@ -1,18 +1,32 @@
 const API_BASE_URL = 'http://localhost:5000'
 
 /**
+ * Lấy token từ localStorage
+ * @returns {string|null} Token hoặc null
+ */
+function getToken() {
+  return localStorage.getItem('accessToken')
+}
+
+/**
  * Gọi API lấy tất cả discount/voucher
  * @returns {Promise<Array>} Danh sách discount từ backend
  */
 export async function fetchAllDiscounts() {
   const url = `${API_BASE_URL}/discounts`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        accept: '*/*',
-      },
+      headers,
     })
 
     if (!response.ok) {
@@ -40,14 +54,20 @@ export async function fetchAllDiscounts() {
  */
 export async function createDiscount(discountData) {
   const url = `${API_BASE_URL}/discounts`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        accept: '*/*',
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(discountData),
     })
 
@@ -71,14 +91,20 @@ export async function createDiscount(discountData) {
  */
 export async function updateDiscount(discountId, discountData) {
   const url = `${API_BASE_URL}/discounts/${discountId}`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'PATCH',
-      headers: {
-        accept: '*/*',
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(discountData),
     })
 
@@ -101,14 +127,20 @@ export async function updateDiscount(discountId, discountData) {
  */
 export async function deleteDiscount(discountId) {
   const url = `${API_BASE_URL}/discounts/${discountId}`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'PATCH',
-      headers: {
-        accept: '*/*',
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ isActive: false }),
     })
 

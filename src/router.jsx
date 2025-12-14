@@ -1,5 +1,7 @@
-import { createBrowserRouter } from 'react-router-dom'
+import { createBrowserRouter, Navigate } from 'react-router-dom'
 import AppLayout from './layout/AppLayout'
+import ProtectedRoute from './components/ProtectedRoute'
+import Login from './screens/Login'
 import Dashboard from './screens/Dashboard'
 import Users from './screens/Users'
 import Restaurants from './screens/Restaurants'
@@ -8,11 +10,21 @@ import MenuDetail from './screens/MenuDetail'
 import Reviews from './screens/Reviews'
 import Complaints from './screens/Complaints'
 import Vouchers from './screens/Vouchers'
+import RestaurantCategories from './screens/RestaurantCategories'
+import ProductCategories from './screens/ProductCategories'
 
 const router = createBrowserRouter([
   {
+    path: '/login',
+    element: <Login />,
+  },
+  {
     path: '/',
-    element: <AppLayout />,
+    element: (
+      <ProtectedRoute>
+        <AppLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { index: true, element: <Dashboard /> },
       { path: 'users', element: <Users /> },
@@ -22,6 +34,8 @@ const router = createBrowserRouter([
       { path: 'reviews', element: <Reviews /> },
       { path: 'complaints', element: <Complaints /> },
       { path: 'vouchers', element: <Vouchers /> },
+      { path: 'restaurant-categories', element: <RestaurantCategories /> },
+      { path: 'product-categories', element: <ProductCategories /> },
     ],
   },
 ])

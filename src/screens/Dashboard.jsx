@@ -1,22 +1,17 @@
 import { useMemo, useState, useEffect } from 'react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip } from 'recharts'
-import { fetchSummary, fetchMonthlyStatistics } from '../services/StatisticsService'
-
-const revenueData = [
-  { name: 'T1', revenue: 12000000 },
-  { name: 'T2', revenue: 14500000 },
-  { name: 'T3', revenue: 17000000 },
-  { name: 'T4', revenue: 15000000 },
-  { name: 'T5', revenue: 21000000 },
-  { name: 'T6', revenue: 26000000 },
-]
+import { fetchSummary, fetchMonthlyStatistics, fetchRestaurantRevenue } from '../services/StatisticsService'
+import { fetchAllRestaurants } from '../services/RestaurantService'
 
 export default function Dashboard() {
   const formatCurrency = (v) => v.toLocaleString('vi-VN') + ' đ'
   
   const [summary, setSummary] = useState({ totalUsers: 0, totalRestaurants: 0 })
   const [monthlyData, setMonthlyData] = useState([])
+  const [revenueData, setRevenueData] = useState([])
+  const [currentMonthRevenue, setCurrentMonthRevenue] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [revenueLoading, setRevenueLoading] = useState(false)
   const [error, setError] = useState('')
   const [year, setYear] = useState(new Date().getFullYear())
 
@@ -61,6 +56,84 @@ export default function Dashboard() {
     }
   }
 
+  // Lấy doanh thu từ tất cả nhà hàng
+  const loadRevenueData = async (selectedYear) => {
+    try {
+      setRevenueLoading(true)
+      setError('')
+      
+      // Lấy danh sách nhà hàng
+      const restaurants = await fetchAllRestaurants()
+      
+      if (!restaurants || restaurants.length === 0) {
+        // Không có nhà hàng, set dữ liệu rỗng
+        const emptyData = Array.from({ length: 12 }, (_, i) => ({
+          name: `T${i + 1}`,
+          revenue: 0,
+        }))
+        setRevenueData(emptyData)
+        setCurrentMonthRevenue(0)
+        return
+      }
+
+      // Lấy doanh thu từng nhà hàng theo API /revenue-reports/restaurant/{restaurantId}/monthly/{year}
+      const revenuePromises = restaurants.map(restaurant => 
+        fetchRestaurantRevenue(restaurant.id, selectedYear).catch(err => {
+          console.error(`Error fetching revenue for restaurant ${restaurant.id}:`, err)
+          // Trả về mảng với 12 tháng, doanh thu = 0 nếu lỗi
+          return Array.from({ length: 12 }, (_, i) => ({
+            month: i + 1,
+            revenue: 0,
+          }))
+        })
+      )
+
+      const allRevenues = await Promise.all(revenuePromises)
+
+      // Tính tổng doanh thu theo tháng từ tất cả nhà hàng
+      const monthlyTotals = Array.from({ length: 12 }, () => 0)
+
+      allRevenues.forEach(restaurantRevenue => {
+        if (Array.isArray(restaurantRevenue)) {
+          restaurantRevenue.forEach(item => {
+            const month = item.month || 0
+            const revenue = item.revenue || 0
+            // month từ API là 1-12
+            if (month >= 1 && month <= 12) {
+              monthlyTotals[month - 1] += revenue
+            }
+          })
+        }
+      })
+
+      // Tính 10% doanh thu và format cho biểu đồ
+      const formatted = monthlyTotals.map((total, index) => ({
+        name: `T${index + 1}`,
+        revenue: Math.round(total * 0.1), // 10% doanh thu tổng
+      }))
+
+      setRevenueData(formatted)
+
+      // Tính tổng doanh thu cả năm (10% của tổng tất cả các tháng)
+      const totalYearRevenue = monthlyTotals.reduce((sum, monthRevenue) => sum + monthRevenue, 0)
+      const finalRevenue = Math.round(totalYearRevenue * 0.1)
+      console.log('Total year revenue (10%):', finalRevenue, 'from total:', totalYearRevenue)
+      setCurrentMonthRevenue(finalRevenue)
+    } catch (err) {
+      console.error('loadRevenueData error:', err)
+      setError('Không tải được dữ liệu doanh thu.')
+      // Set dữ liệu rỗng nếu lỗi
+      const emptyData = Array.from({ length: 12 }, (_, i) => ({
+        name: `T${i + 1}`,
+        revenue: 0,
+      }))
+      setRevenueData(emptyData)
+      setCurrentMonthRevenue(0)
+    } finally {
+      setRevenueLoading(false)
+    }
+  }
+
   // Load summary khi component mount
   useEffect(() => {
     loadSummary()
@@ -69,6 +142,11 @@ export default function Dashboard() {
   // Load monthly data khi component mount và khi year thay đổi
   useEffect(() => {
     loadMonthlyStatistics(year)
+  }, [year])
+
+  // Load revenue data khi component mount và khi year thay đổi
+  useEffect(() => {
+    loadRevenueData(year)
   }, [year])
 
   // Tạo danh sách năm (từ năm hiện tại trở về trước 3 năm)
@@ -97,28 +175,56 @@ export default function Dashboard() {
           </div>
         </div>
         <div className="stat-card">
-          <div className="label">Doanh thu tháng này</div>
-          <div className="value" style={{ color: 'var(--color-primary-500)' }}>{formatCurrency(26000000)}</div>
+          <div className="label">Tổng doanh thu năm {year}</div>
+          <div className="value" >
+            {revenueLoading ? '...' : formatCurrency(currentMonthRevenue)}
+          </div>
         </div>
       </div>
 
       <div className="card" style={{ padding: 16 }}>
-        <div className="section-title">Doanh thu theo tháng</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div className="section-title">Doanh thu theo tháng</div>
+          <select 
+            value={year} 
+            onChange={(e) => setYear(Number(e.target.value))} 
+            disabled={revenueLoading}
+            style={{ 
+              width: 'auto',
+              padding: '10px 12px', 
+              borderRadius: 10, 
+              background: '#fff', 
+              color: 'var(--color-text)', 
+              border: '2px solid var(--color-primary-500)',
+              minWidth: 140,
+              cursor: revenueLoading ? 'not-allowed' : 'pointer',
+              opacity: revenueLoading ? 0.6 : 1,
+            }}
+          >
+            {years.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
         <div style={{ width: '100%', height: 260 }}>
-          <ResponsiveContainer>
-            <AreaChart data={revenueData}>
-              <defs>
-                <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#e5383b" stopOpacity={0.6}/>
-                  <stop offset="95%" stopColor="#e5383b" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="name" stroke="#737373" />
-              <YAxis stroke="#737373" tickFormatter={v => v/1000000 + 'm'} />
-              <Tooltip formatter={(v) => [formatCurrency(v), 'Doanh thu']} />
-              <Area type="monotone" dataKey="revenue" stroke="#e5383b" fillOpacity={1} fill="url(#rev)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {revenueLoading && revenueData.length === 0 ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--color-text-muted)' }}>
+              Đang tải dữ liệu...
+            </div>
+          ) : (
+            <ResponsiveContainer>
+              <AreaChart data={revenueData}>
+                <defs>
+                  <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#e5383b" stopOpacity={0.6}/>
+                    <stop offset="95%" stopColor="#e5383b" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="name" stroke="#737373" />
+                <YAxis stroke="#737373" tickFormatter={v => v/1000000 + 'm'} />
+                <Tooltip formatter={(v) => [formatCurrency(v), 'Doanh thu']} />
+                <Area type="monotone" dataKey="revenue" stroke="#e5383b" fillOpacity={1} fill="url(#rev)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 

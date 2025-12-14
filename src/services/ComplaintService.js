@@ -1,18 +1,32 @@
 const API_BASE_URL = 'http://localhost:5000'
 
 /**
+ * Lấy token từ localStorage
+ * @returns {string|null} Token hoặc null
+ */
+function getToken() {
+  return localStorage.getItem('accessToken')
+}
+
+/**
  * Gọi API lấy tất cả khiếu nại/báo cáo
  * @returns {Promise<Array>} Danh sách khiếu nại từ backend
  */
 export async function fetchAllComplaints() {
   const url = `${API_BASE_URL}/complaints-reports`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        accept: '*/*',
-      },
+      headers,
     })
 
     if (!response.ok) {
@@ -40,13 +54,19 @@ export async function fetchAllComplaints() {
  */
 export async function deleteComplaint(complaintId) {
   const url = `${API_BASE_URL}/complaints-reports/${complaintId}`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'DELETE',
-      headers: {
-        accept: '*/*',
-      },
+      headers,
     })
 
     if (!response.ok) {

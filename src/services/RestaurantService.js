@@ -1,7 +1,15 @@
 const API_BASE_URL = 'http://localhost:5000'
 
 /**
- * Gọi API lấy tất cả nhà hàng
+ * Lấy token từ localStorage
+ * @returns {string|null} Token hoặc null
+ */
+function getToken() {
+  return localStorage.getItem('accessToken')
+}
+
+/**
+ * Gọi API lấy tất cả nhà hàng (KHÔNG cần token)
  * @returns {Promise<Array>} Danh sách nhà hàng từ backend
  */
 export async function fetchAllRestaurants() {
@@ -40,13 +48,19 @@ export async function fetchAllRestaurants() {
  */
 export async function fetchRestaurantDetail(restaurantId) {
   const url = `${API_BASE_URL}/restaurants/${restaurantId}`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'GET',
-      headers: {
-        accept: '*/*',
-      },
+      headers,
     })
 
     if (!response.ok) {
@@ -68,14 +82,20 @@ export async function fetchRestaurantDetail(restaurantId) {
  */
 export async function updateRestaurantStatus(restaurantId, isActive) {
   const url = `${API_BASE_URL}/restaurants/${restaurantId}/status`
+  const token = getToken()
 
   try {
+    const headers = {
+      accept: '*/*',
+      'Content-Type': 'application/json',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(url, {
       method: 'PATCH',
-      headers: {
-        accept: '*/*',
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ isActive }),
     })
 
