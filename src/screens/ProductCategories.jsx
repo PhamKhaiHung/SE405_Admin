@@ -4,6 +4,7 @@ import {
   createProductCategory,
   updateProductCategory,
   deleteProductCategory,
+  fetchCategoryProductMaps,
 } from '../services/CategoryService'
 import ConfirmModal from '../components/ConfirmModal'
 
@@ -18,6 +19,8 @@ export default function ProductCategories() {
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [deletingId, setDeletingId] = useState(null)
+  const [linkedCategoryIds, setLinkedCategoryIds] = useState(new Set())
+  const [categoryProductCounts, setCategoryProductCounts] = useState({})
   const [formData, setFormData] = useState({
     name: '',
   })
@@ -48,8 +51,39 @@ export default function ProductCategories() {
     }
   }
 
+  // Gọi API lấy mapping danh mục sản phẩm - món ăn
+  const loadCategoryMaps = async () => {
+    try {
+      const data = await fetchCategoryProductMaps()
+
+      const usedCategoryIds = new Set()
+      const counts = {}
+
+      data.forEach((item) => {
+        if (!item) return
+
+        // Bỏ qua mapping / category đã bị disable nếu backend có flag
+        if (item.isActive === false) return
+        if (item.category && item.category.isActive === false) return
+
+        const categoryId = item.categoryId || item.productCategoryId
+        if (!categoryId) return
+
+        usedCategoryIds.add(categoryId)
+        counts[categoryId] = (counts[categoryId] || 0) + 1
+      })
+
+      setLinkedCategoryIds(usedCategoryIds)
+      setCategoryProductCounts(counts)
+    } catch (err) {
+      console.error(err)
+      // Không show lỗi ra UI để tránh làm phiền admin
+    }
+  }
+
   useEffect(() => {
     loadCategories()
+    loadCategoryMaps()
   }, [])
 
   // Lọc danh mục theo tên
@@ -136,6 +170,15 @@ export default function ProductCategories() {
 
   // Xác nhận xóa
   const confirmDelete = (category) => {
+    // Nếu danh mục đang được sử dụng bởi món ăn thì không cho xóa
+    if (linkedCategoryIds.has(category.id)) {
+      setErrorMessage(
+        `Loại đồ ăn "${category.name}" đang được sử dụng bởi ít nhất một món ăn nên không thể xóa.`,
+      )
+      setShowErrorModal(true)
+      return
+    }
+
     setDeletingId(category.id)
     setShowConfirmModal(true)
   }
@@ -236,6 +279,7 @@ export default function ProductCategories() {
                 <tr>
                   <th>Số thứ tự</th>
                   <th>Tên loại</th>
+                  <th>Số món ăn</th>
                   <th>Trạng thái</th>
                   <th>Ngày tạo</th>
                   <th>Thao tác</th>
@@ -246,6 +290,7 @@ export default function ProductCategories() {
                   <tr key={cat.id}>
                     <td>{index + 1}</td>
                     <td>{cat.name}</td>
+                    <td>{categoryProductCounts[cat.id] || 0}</td>
                     <td>
                       <span
                         style={{

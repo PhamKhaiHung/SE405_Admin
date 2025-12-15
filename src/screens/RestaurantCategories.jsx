@@ -4,6 +4,7 @@ import {
   createRestaurantCategory,
   updateRestaurantCategory,
   deleteRestaurantCategory,
+  fetchCategoryRestaurantMaps,
 } from '../services/CategoryService'
 import ConfirmModal from '../components/ConfirmModal'
 
@@ -18,6 +19,8 @@ export default function RestaurantCategories() {
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [deletingId, setDeletingId] = useState(null)
+  const [linkedCategoryIds, setLinkedCategoryIds] = useState(new Set())
+  const [categoryRestaurantCounts, setCategoryRestaurantCounts] = useState({})
   const [formData, setFormData] = useState({
     name: '',
   })
@@ -48,8 +51,43 @@ export default function RestaurantCategories() {
     }
   }
 
+  // Gọi API lấy mapping danh mục - nhà hàng
+  const loadCategoryMaps = async () => {
+    try {
+      const data = await fetchCategoryRestaurantMaps()
+
+      // Tạo tập hợp các categoryId đang được dùng bởi ít nhất một nhà hàng
+      const usedCategoryIds = new Set()
+      const counts = {}
+      data.forEach((item) => {
+        // Chỉ tính các mapping còn hoạt động
+        if (!item) return
+
+        if (item.isActive === false) return
+
+        if (item.category && item.category.isActive === false) return
+
+        // Ưu tiên categoryId, fallback sang restaurantCategoryId nếu cần
+        const categoryId = item.categoryId || item.restaurantCategoryId
+        if (!categoryId) return
+
+        usedCategoryIds.add(categoryId)
+
+        // Đếm số nhà hàng cho từng danh mục
+        counts[categoryId] = (counts[categoryId] || 0) + 1
+      })
+
+      setLinkedCategoryIds(usedCategoryIds)
+      setCategoryRestaurantCounts(counts)
+    } catch (err) {
+      console.error(err)
+      // Không hiển thị lỗi ra UI để tránh làm phiền admin; chỉ log
+    }
+  }
+
   useEffect(() => {
     loadCategories()
+    loadCategoryMaps()
   }, [])
 
   // Lọc danh mục theo tên
@@ -136,6 +174,15 @@ export default function RestaurantCategories() {
 
   // Xác nhận xóa
   const confirmDelete = (category) => {
+    // Nếu danh mục đang được sử dụng bởi nhà hàng thì không cho xóa
+    if (linkedCategoryIds.has(category.id)) {
+      setErrorMessage(
+        `Danh mục "${category.name}" đang được sử dụng bởi ít nhất một nhà hàng nên không thể xóa.`,
+      )
+      setShowErrorModal(true)
+      return
+    }
+
     setDeletingId(category.id)
     setShowConfirmModal(true)
   }
@@ -236,6 +283,7 @@ export default function RestaurantCategories() {
                 <tr>
                   <th>Số thứ tự</th>
                   <th>Tên danh mục</th>
+                  <th>Số nhà hàng</th>
                   <th>Trạng thái</th>
                   <th>Ngày tạo</th>
                   <th>Thao tác</th>
@@ -246,6 +294,7 @@ export default function RestaurantCategories() {
                   <tr key={cat.id}>
                     <td>{index + 1}</td>
                     <td>{cat.name}</td>
+                    <td>{categoryRestaurantCounts[cat.id] || 0}</td>
                     <td>
                       <span
                         style={{

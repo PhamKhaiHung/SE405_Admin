@@ -15,6 +15,21 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [year, setYear] = useState(new Date().getFullYear())
 
+  // Tính giá trị doanh thu lớn nhất để chọn đơn vị hiển thị trục Y
+  const maxRevenue = useMemo(
+    () => (revenueData.length > 0 ? Math.max(...revenueData.map((d) => d.revenue || 0)) : 0),
+    [revenueData],
+  )
+
+  // Format giá trị trục Y: nếu doanh thu < 1 triệu thì hiển thị theo số tiền đầy đủ (thường là bội số 100.000),
+  // nếu >= 1 triệu thì hiển thị theo đơn vị triệu (m)
+  const formatRevenueAxisTick = (value) => {
+    if (maxRevenue < 1_000_000) {
+      return value.toLocaleString('vi-VN')
+    }
+    return `${value / 1_000_000}m`
+  }
+
   // Lấy tổng số người dùng và nhà hàng
   const loadSummary = async () => {
     try {
@@ -219,7 +234,7 @@ export default function Dashboard() {
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="name" stroke="#737373" />
-                <YAxis stroke="#737373" tickFormatter={v => v/1000000 + 'm'} />
+                <YAxis stroke="#737373" tickFormatter={formatRevenueAxisTick} />
                 <Tooltip formatter={(v) => [formatCurrency(v), 'Doanh thu']} />
                 <Area type="monotone" dataKey="revenue" stroke="#e5383b" fillOpacity={1} fill="url(#rev)" />
               </AreaChart>

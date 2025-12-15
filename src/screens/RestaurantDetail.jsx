@@ -8,6 +8,7 @@ export default function RestaurantDetail() {
   const [restaurant, setRestaurant] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [menuQuery, setMenuQuery] = useState('')
 
   // Gọi API lấy chi tiết nhà hàng
   useEffect(() => {
@@ -81,6 +82,14 @@ export default function RestaurantDetail() {
       monthlyRevenue: {}, // API không có
     }
   }, [restaurant])
+
+  // Lọc món ăn theo tên (không phân biệt hoa thường)
+  const filteredMenu = useMemo(() => {
+    if (!data) return []
+    const q = menuQuery.trim().toLowerCase()
+    if (!q) return data.menu
+    return data.menu.filter((item) => item.name.toLowerCase().includes(q))
+  }, [data, menuQuery])
 
   if (loading) return <div style={{ padding: 24 }}>Đang tải...</div>
   if (error) return <div style={{ padding: 24, color: '#fa5252' }}>{error}</div>
@@ -199,23 +208,36 @@ export default function RestaurantDetail() {
 
       {/* Thực đơn */}
       <div className="card" style={{ padding: 24 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <div className="section-title" style={{ fontSize: 22 }}>🍽️ Thực đơn ({data.menu.length} món)</div>
-          <Link to={`/restaurants/${data.id}/menu`} className="btn primary">Xem tất cả món ăn</Link>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, gap: 16, flexWrap: 'wrap' }}>
+          <div className="section-title" style={{ fontSize: 22 }}>🍽️ Thực đơn ({filteredMenu.length} món)</div>
+          <input
+            type="text"
+            placeholder="Tìm kiếm món ăn theo tên..."
+            value={menuQuery}
+            onChange={(e) => setMenuQuery(e.target.value)}
+            style={{
+              flex: '0 0 560px',
+              maxWidth: '100%',
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: '2px solid #e0e0e0',
+              fontSize: 14,
+            }}
+          />
         </div>
         
-        {data.menu.length > 0 ? (
+        {filteredMenu.length > 0 ? (
           <div style={{ 
             display: 'grid', 
             gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
             gap: 16 
           }}>
-            {data.menu.map(item => (
+            {filteredMenu.map(item => (
               <div 
                 key={item.id} 
                 style={{ 
-                  background: 'linear-gradient(180deg, #1a1c21, #16181d)',
-                  border: '1px solid var(--color-border)',
+                  
+                  border: '1px solid var(--color-primary-500)',
                   borderRadius: 12,
                   padding: 14,
                   display: 'flex',

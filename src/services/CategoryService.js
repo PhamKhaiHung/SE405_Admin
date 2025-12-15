@@ -310,3 +310,79 @@ export async function deleteProductCategory(categoryId) {
   }
 }
 
+/**
+ * Lấy mapping giữa danh mục nhà hàng và nhà hàng
+ * @returns {Promise<Array>} Danh sách mapping category-restaurant
+ */
+export async function fetchCategoryRestaurantMaps() {
+  const url = `${API_BASE_URL}/category-restaurant-maps`
+  const token = getToken()
+
+  try {
+    const headers = {
+      accept: '*/*',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid response format: expected an array')
+    }
+
+    return data
+  } catch (error) {
+    console.error('fetchCategoryRestaurantMaps error:', error)
+    throw error
+  }
+}
+
+/**
+ * Lấy mapping giữa danh mục sản phẩm (loại đồ ăn) và món ăn
+ * @returns {Promise<Array>} Danh sách mapping category-product
+ */
+export async function fetchCategoryProductMaps() {
+  const url = `${API_BASE_URL}/category-product-maps`
+  const token = getToken()
+
+  try {
+    const headers = {
+      accept: '*/*',
+    }
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`
+    }
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers,
+    })
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid response format: expected an array')
+    }
+
+    return data
+  } catch (error) {
+    console.error('fetchCategoryProductMaps error:', error)
+    throw error
+  }
+}
+
