@@ -303,9 +303,11 @@ export default function Reviews() {
                           key={resp.id}
                           style={{
                             padding: 12,
-                            background: '#0d0e12',
-                            borderRadius: 8,
-                            marginBottom: 8,
+                            background: '#fff7f0', // nền cam nhạt
+                            borderRadius: 10,
+                            marginBottom: 10,
+                            border: '1px solid #ff922b', // viền cam
+                            color: '#111', // chữ đen dễ đọc
                           }}
                         >
                           <div
@@ -339,10 +341,10 @@ export default function Reviews() {
                                 />
                               )}
                               <div>
-                                <div style={{ fontWeight: 600, fontSize: 14 }}>
+                                <div style={{ fontWeight: 600, fontSize: 14, color: '#111' }}>
                                   {resp.sender?.username || 'Chủ cửa hàng'}
                                 </div>
-                                <div style={{ fontSize: 12, color: 'var(--color-text-muted)' }}>
+                                <div style={{ fontSize: 12, color: '#555' }}>
                                   {formatDate(resp.createdAt)}
                                 </div>
                               </div>
@@ -356,7 +358,7 @@ export default function Reviews() {
                               Xóa
                             </button>
                           </div>
-                          <div style={{ fontSize: 14 }}>{resp.response}</div>
+                          <div style={{ fontSize: 14, color: '#111' }}>{resp.response}</div>
                           {resp.imageUrl && (
                             <img
                               src={getImageUrl(resp.imageUrl)}

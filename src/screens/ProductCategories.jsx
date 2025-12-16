@@ -17,6 +17,7 @@ export default function ProductCategories() {
   const [editingCategory, setEditingCategory] = useState(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [showErrorModal, setShowErrorModal] = useState(false)
+  const [errorTitle, setErrorTitle] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [deletingId, setDeletingId] = useState(null)
   const [linkedCategoryIds, setLinkedCategoryIds] = useState(new Set())
@@ -121,7 +122,9 @@ export default function ProductCategories() {
   // Lưu danh mục (thêm mới hoặc cập nhật)
   const handleSave = async () => {
     if (!formData.name.trim()) {
-      setError('Vui lòng nhập tên danh mục')
+      setErrorTitle('Thông báo lỗi')
+      setErrorMessage('Vui lòng nhập tên loại đồ ăn.')
+      setShowErrorModal(true)
       return
     }
 
@@ -137,6 +140,7 @@ export default function ProductCategories() {
     })
 
     if (nameExists) {
+      setErrorTitle('Tên loại đồ ăn đã tồn tại')
       setErrorMessage(`Tên loại đồ ăn "${trimmedName}" đã tồn tại. Vui lòng chọn tên khác.`)
       setShowErrorModal(true)
       return
@@ -172,6 +176,7 @@ export default function ProductCategories() {
   const confirmDelete = (category) => {
     // Nếu danh mục đang được sử dụng bởi món ăn thì không cho xóa
     if (linkedCategoryIds.has(category.id)) {
+      setErrorTitle('Không thể xóa loại đồ ăn')
       setErrorMessage(
         `Loại đồ ăn "${category.name}" đang được sử dụng bởi ít nhất một món ăn nên không thể xóa.`,
       )
@@ -482,7 +487,7 @@ export default function ProductCategories() {
               </svg>
             </div>
             <h2 style={{ marginTop: 0, marginBottom: 12, fontSize: 20, fontWeight: 600 }}>
-              Tên loại đồ ăn đã tồn tại
+              {errorTitle || 'Thông báo lỗi'}
             </h2>
             <p style={{ marginTop: 0, marginBottom: 24, color: 'var(--color-text-muted)', fontSize: 14, lineHeight: '1.6' }}>
               {errorMessage}

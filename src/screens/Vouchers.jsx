@@ -11,6 +11,8 @@ export default function Vouchers() {
   const [editingVoucher, setEditingVoucher] = useState(null)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
+  const [showErrorModal, setShowErrorModal] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -117,19 +119,22 @@ export default function Vouchers() {
   const saveVoucher = async () => {
     // Validate chung
     if (!formData.name.trim() || !formData.description.trim()) {
-      alert('Vui lòng điền đầy đủ thông tin')
+      setErrorMessage('Vui lòng điền đầy đủ thông tin.')
+      setShowErrorModal(true)
       return
     }
 
     const quantityNum = Number(formData.quantity)
     if (!Number.isFinite(quantityNum) || quantityNum <= 0) {
-      alert('Vui lòng nhập số lượng hợp lệ (> 0)')
+      setErrorMessage('Vui lòng nhập số lượng hợp lệ (> 0 và không âm).')
+      setShowErrorModal(true)
       return
     }
 
     const minOrderNum = Number(formData.minOrder || 0)
     if (!Number.isFinite(minOrderNum) || minOrderNum < 0) {
-      alert('Vui lòng nhập đơn hàng tối thiểu hợp lệ (>= 0)')
+      setErrorMessage('Vui lòng nhập đơn hàng tối thiểu hợp lệ (>= 0 và không âm).')
+      setShowErrorModal(true)
       return
     }
 
@@ -140,8 +145,9 @@ export default function Vouchers() {
     if (formData.discountType === 'percent') {
       type = 1
       const percentNum = Number(formData.discount)
-      if (!Number.isFinite(percentNum) || percentNum <= 0) {
-        alert('Vui lòng nhập % giảm hợp lệ (> 0)')
+      if (!Number.isFinite(percentNum) || percentNum <= 0 || percentNum > 100) {
+        setErrorMessage('Vui lòng nhập % giảm hợp lệ .')
+        setShowErrorModal(true)
         return
       }
       percent = percentNum
@@ -150,9 +156,16 @@ export default function Vouchers() {
       type = 2
       const fixedNum = Number(formData.discount)
       if (!Number.isFinite(fixedNum) || fixedNum <= 0) {
-        alert('Vui lòng nhập số tiền giảm hợp lệ (> 0)')
+        setErrorMessage('Vui lòng nhập số tiền giảm hợp lệ .')
+        setShowErrorModal(true)
         return
       }
+    // Không cho phép số tiền giảm lớn hơn giá trị đơn hàng tối thiểu (nếu có đặt)
+    if (minOrderNum > 0 && fixedNum > minOrderNum) {
+      setErrorMessage('Số tiền giảm không được lớn hơn giá trị đơn hàng tối thiểu.')
+      setShowErrorModal(true)
+      return
+    }
       discountmoney = fixedNum
       percent = null
     } else if (formData.discountType === 'freeship') {
@@ -192,7 +205,8 @@ export default function Vouchers() {
     } catch (err) {
       console.error(err)
       setError('Không thể lưu voucher. Vui lòng thử lại.')
-      alert('Có lỗi xảy ra: ' + err.message)
+      setErrorMessage(err.message || 'Không thể lưu voucher. Vui lòng thử lại.')
+      setShowErrorModal(true)
     } finally {
       setLoading(false)
     }
@@ -220,7 +234,8 @@ export default function Vouchers() {
     } catch (err) {
       console.error(err)
       setError('Không thể xóa voucher. Vui lòng thử lại.')
-      alert('Có lỗi xảy ra: ' + err.message)
+      setErrorMessage(err.message || 'Không thể xóa voucher. Vui lòng thử lại.')
+      setShowErrorModal(true)
     } finally {
       setLoading(false)
     }
@@ -483,6 +498,98 @@ export default function Vouchers() {
         cancelText="Hủy"
         type="danger"
       />
+
+      {/* Modal thông báo lỗi */}
+      {showErrorModal && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0, 0, 0, 0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000,
+            padding: 20,
+          }}
+          onClick={() => {
+            setShowErrorModal(false)
+            setErrorMessage('')
+          }}
+        >
+          <div
+            className="card"
+            style={{
+              width: '100%',
+              maxWidth: 420,
+              padding: 24,
+              background: 'var(--color-surface)',
+              textAlign: 'center',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: '50%',
+                background: 'rgba(255, 212, 59, 0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 16px',
+              }}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="#ffd43b"
+                strokeWidth="2"
+              >
+                <path
+                  d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <h2 style={{ marginTop: 0, marginBottom: 12, fontSize: 20, fontWeight: 600 }}>
+              Thông báo lỗi
+            </h2>
+            <p
+              style={{
+                marginTop: 0,
+                marginBottom: 24,
+                color: 'var(--color-text-muted)',
+                fontSize: 14,
+                lineHeight: '1.6',
+              }}
+            >
+              {errorMessage}
+            </p>
+            <button
+              className="btn primary"
+              onClick={() => {
+                setShowErrorModal(false)
+                setErrorMessage('')
+              }}
+              style={{
+                minWidth: 100,
+                
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              Đóng
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

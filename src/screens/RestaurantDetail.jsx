@@ -144,12 +144,26 @@ export default function RestaurantDetail() {
                 className={`status-dot ${data.active ? 'active' : 'inactive'}`} 
                 style={{ 
                   fontSize: 15, 
-                  padding: '8px 16px',
-                  background: data.active ? 'rgba(55,178,77,0.2)' : 'rgba(250,82,82,0.2)',
-                  borderRadius: 20,
+                  padding: '8px 18px',
+                  borderRadius: 999,
+                  border: data.active ? '2px solid #37b24d' : '2px solid #fa5252',
+                  background: data.active ? 'rgba(55,178,77,0.18)' : 'rgba(250,82,82,0.18)',
+                  color: '#fff',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
                 }}
               >
-                <span className="dot" />{data.active ? 'Đang hoạt động' : 'Đã khoá'}
+                <span 
+                  className="dot" 
+                  style={{ 
+                    width: 8, 
+                    height: 8, 
+                    borderRadius: '50%', 
+                    background: data.active ? '#37b24d' : '#fa5252' 
+                  }} 
+                />
+                {data.active ? 'Đang hoạt động' : 'Đã khoá'}
               </div>
             </div>
           </div>
