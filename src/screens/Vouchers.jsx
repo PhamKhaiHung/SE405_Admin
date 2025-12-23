@@ -25,11 +25,25 @@ export default function Vouchers() {
     discountType: "percent",
     minOrder: "",
     quantity: "",
+    startTime: "",
+    endTime: "",
+    status: "ACTIVE",
   });
 
   const sanitizeNumber = (val, allowDecimal = false) => {
     if (val === "") return "";
     return allowDecimal ? val.replace(/[^0-9.]/g, "") : val.replace(/\\D/g, "");
+  };
+
+  // Định dạng datetime cho input type="datetime-local"
+  const formatDateTimeInput = (dateStr) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return "";
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   };
 
   // Gọi API lấy danh sách voucher/discount
@@ -61,6 +75,9 @@ export default function Vouchers() {
           quantity: d.quantity ?? 0,
           createdAt: d.createdAt,
           active: d.isActive ?? true,
+          startTime: d.startTime,
+          endTime: d.endTime,
+          status: d.status ?? "ACTIVE",
         };
       });
 
@@ -98,6 +115,9 @@ export default function Vouchers() {
       discountType: "percent",
       minOrder: "",
       quantity: "",
+      startTime: "",
+      endTime: "",
+      status: "ACTIVE",
     });
     setShowModal(true);
   };
@@ -115,6 +135,9 @@ export default function Vouchers() {
       discountType: voucher.discountType,
       minOrder: voucher.minOrder.toString(),
       quantity: voucher.quantity?.toString() || "",
+      startTime: formatDateTimeInput(voucher.startTime),
+      endTime: formatDateTimeInput(voucher.endTime),
+      status: voucher.status || "ACTIVE",
     });
     setShowModal(true);
   };
@@ -130,6 +153,9 @@ export default function Vouchers() {
       discountType: "percent",
       minOrder: "",
       quantity: "",
+      startTime: "",
+      endTime: "",
+      status: "ACTIVE",
     });
   };
 
@@ -196,6 +222,22 @@ export default function Vouchers() {
       discountmoney = null;
     }
 
+    // Xử lý thời gian hiệu lực
+    const startTimeIso = formData.startTime
+      ? new Date(formData.startTime).toISOString()
+      : new Date().toISOString();
+    const endTimeIso = formData.endTime
+      ? new Date(formData.endTime).toISOString()
+      : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(); // mặc định +1 năm
+
+    if (new Date(endTimeIso).getTime() <= new Date(startTimeIso).getTime()) {
+      setErrorMessage("Thời gian kết thúc phải sau thời gian bắt đầu.");
+      setShowErrorModal(true);
+      return;
+    }
+
+    const status = formData.status || "ACTIVE";
+
     try {
       setLoading(true);
       setError("");
@@ -208,9 +250,9 @@ export default function Vouchers() {
         discountmoney,
         minOrderValue: minOrderNum,
         quantity: quantityNum,
-        startTime: new Date().toISOString(),
-        endTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // +1 năm
-        status: "ACTIVE",
+        startTime: startTimeIso,
+        endTime: endTimeIso,
+        status,
       };
 
       if (editingVoucher) {
@@ -339,8 +381,9 @@ export default function Vouchers() {
               <th>Giảm giá</th>
               <th>Đơn tối thiểu</th>
               <th>Số lượng</th>
+              <th>Trạng thái</th>
               <th>Ngày tạo</th>
-              <th style={{ width: 200 }}>Hành động</th>
+              <th style={{ width: 220 }}>Hành động</th>
             </tr>
           </thead>
           <tbody>
@@ -375,6 +418,15 @@ export default function Vouchers() {
                       : "Không có"}
                   </td>
                   <td>{voucher.quantity?.toLocaleString("vi-VN") || 0}</td>
+                  <td>
+                    <span
+                      className={`badge ${
+                        voucher.status === "ACTIVE" ? "success" : "danger"
+                      }`}
+                    >
+                      {voucher.status === "ACTIVE" ? "Hợp lệ" : "Không hợp lệ"}
+                    </span>
+                  </td>
                   <td>{formatDate(voucher.createdAt)}</td>
                   <td>
                     <div style={{ display: "flex", gap: 8 }}>
@@ -565,6 +617,89 @@ export default function Vouchers() {
                   />
                 </div>
               )}
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 8,
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  Hiệu lực từ *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.startTime}
+                  onChange={(e) =>
+                    setFormData({ ...formData, startTime: e.target.value })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #000",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text)",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 8,
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  Hiệu lực đến *
+                </label>
+                <input
+                  type="datetime-local"
+                  value={formData.endTime}
+                  onChange={(e) =>
+                    setFormData({ ...formData, endTime: e.target.value })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #000",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text)",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: 8,
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  Trạng thái
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) =>
+                    setFormData({ ...formData, status: e.target.value })
+                  }
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid " + "#000",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text)",
+                  }}
+                >
+                  <option value="ACTIVE">Hợp lệ</option>
+                  <option value="NOTACTIVE">Không hợp lệ</option>
+                </select>
+              </div>
 
               <div>
                 <label
