@@ -1,11 +1,11 @@
-const API_BASE_URL = 'http://localhost:5000'
+const API_BASE_URL = "http://localhost:5000";
 
 /**
  * Lấy token từ localStorage
  * @returns {string|null} Token hoặc null
  */
 function getToken() {
-  return localStorage.getItem('accessToken')
+  return localStorage.getItem("accessToken");
 }
 
 /**
@@ -13,37 +13,74 @@ function getToken() {
  * @returns {Promise<Array>} Danh sách khiếu nại từ backend
  */
 export async function fetchAllComplaints() {
-  const url = `${API_BASE_URL}/complaints-reports`
-  const token = getToken()
+  const url = `${API_BASE_URL}/complaints-reports`;
+  const token = getToken();
 
   try {
     const headers = {
-      accept: '*/*',
-    }
+      accept: "*/*",
+    };
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const response = await fetch(url, {
-      method: 'GET',
+      method: "GET",
       headers,
-    })
+    });
 
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`)
+      throw new Error(`Request failed with status ${response.status}`);
     }
 
-    const data = await response.json()
+    const data = await response.json();
 
     // Đảm bảo luôn trả về mảng
     if (!Array.isArray(data)) {
-      throw new Error('Invalid response format: expected an array')
+      throw new Error("Invalid response format: expected an array");
     }
 
-    return data
+    return data;
   } catch (error) {
-    console.error('fetchAllComplaints error:', error)
-    throw error
+    console.error("fetchAllComplaints error:", error);
+    throw error;
+  }
+}
+
+/**
+ * Cập nhật trạng thái đã đọc/chưa đọc của khiếu nại
+ * @param {number} complaintId - ID khiếu nại
+ * @param {boolean} isRead - trạng thái isRead mong muốn
+ * @returns {Promise<Object>} Khiếu nại sau khi cập nhật
+ */
+export async function updateComplaintReadStatus(complaintId, isRead) {
+  const url = `${API_BASE_URL}/complaints-reports/${complaintId}`;
+  const token = getToken();
+
+  try {
+    const headers = {
+      accept: "*/*",
+      "Content-Type": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ isRead }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("updateComplaintReadStatus error:", error);
+    throw error;
   }
 }
 
@@ -53,36 +90,35 @@ export async function fetchAllComplaints() {
  * @returns {Promise<Object>} Kết quả xóa
  */
 export async function deleteComplaint(complaintId) {
-  const url = `${API_BASE_URL}/complaints-reports/${complaintId}`
-  const token = getToken()
+  const url = `${API_BASE_URL}/complaints-reports/${complaintId}`;
+  const token = getToken();
 
   try {
     const headers = {
-      accept: '*/*',
-    }
+      accept: "*/*",
+    };
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const response = await fetch(url, {
-      method: 'DELETE',
+      method: "DELETE",
       headers,
-    })
+    });
 
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`)
+      throw new Error(`Request failed with status ${response.status}`);
     }
 
     // Một số API DELETE trả về 204 No Content, không có body
     if (response.status === 204) {
-      return null
+      return null;
     }
 
     // Nếu có body, parse JSON
-    return await response.json().catch(() => null)
+    return await response.json().catch(() => null);
   } catch (error) {
-    console.error('deleteComplaint error:', error)
-    throw error
+    console.error("deleteComplaint error:", error);
+    throw error;
   }
 }
-

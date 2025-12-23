@@ -1,123 +1,164 @@
-import { useMemo, useState, useEffect } from 'react'
-import { fetchAllComplaints, deleteComplaint as deleteComplaintAPI } from '../services/ComplaintService'
-import ConfirmModal from '../components/ConfirmModal'
+import { useMemo, useState, useEffect } from "react";
+import {
+  fetchAllComplaints,
+  deleteComplaint as deleteComplaintAPI,
+  updateComplaintReadStatus,
+} from "../services/ComplaintService";
+import ConfirmModal from "../components/ConfirmModal";
 
 export default function Complaints() {
-  const [complaints, setComplaints] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [query, setQuery] = useState('')
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [deletingId, setDeletingId] = useState(null)
+  const [complaints, setComplaints] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   // Gọi API lấy danh sách khiếu nại
   const loadComplaints = async () => {
     try {
-      setLoading(true)
-      setError('')
+      setLoading(true);
+      setError("");
 
-      const data = await fetchAllComplaints()
+      const data = await fetchAllComplaints();
 
       // Map dữ liệu từ API về format dùng trong UI
       const mapped = data.map((c, index) => ({
         id: c.id ?? `complaint-${index}`,
-        senderName: c.user?.username ?? 'Không rõ',
-        phone: c.user?.email ?? '', // API không có phone, dùng email thay thế
-        content: c.content ?? '',
+        senderName: c.user?.username ?? "Không rõ",
+        phone: c.user?.email ?? "", // API không có phone, dùng email thay thế
+        content: c.content ?? "",
         createdAt: c.createdAt,
-      }))
+        isRead: c.isRead ?? false,
+      }));
 
-      setComplaints(mapped)
+      setComplaints(mapped);
     } catch (err) {
-      console.error(err)
-      setError('Không tải được danh sách khiếu nại. Vui lòng thử lại.')
+      console.error(err);
+      setError("Không tải được danh sách khiếu nại. Vui lòng thử lại.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    loadComplaints()
-  }, [])
+    loadComplaints();
+  }, []);
 
   // Lọc khiếu nại theo tên, số điện thoại/email hoặc nội dung
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    if (!q) return complaints
-    return complaints.filter(c => 
-      c.senderName.toLowerCase().includes(q) || 
-      c.phone.toLowerCase().includes(q) || 
-      c.content.toLowerCase().includes(q)
-    )
-  }, [complaints, query])
+    const q = query.trim().toLowerCase();
+    if (!q) return complaints;
+    return complaints.filter(
+      (c) =>
+        c.senderName.toLowerCase().includes(q) ||
+        c.phone.toLowerCase().includes(q) ||
+        c.content.toLowerCase().includes(q)
+    );
+  }, [complaints, query]);
 
   // Mở modal xác nhận xóa
   const openDeleteConfirm = (id) => {
-    setDeletingId(id)
-    setShowConfirmModal(true)
-  }
+    setDeletingId(id);
+    setShowConfirmModal(true);
+  };
 
   // Xóa khiếu nại thông qua API
   const deleteComplaint = async () => {
-    if (!deletingId) return
+    if (!deletingId) return;
 
     try {
-      setLoading(true)
-      setError('')
+      setLoading(true);
+      setError("");
 
-      await deleteComplaintAPI(deletingId)
+      await deleteComplaintAPI(deletingId);
 
       // Tải lại danh sách sau khi xóa thành công
-      await loadComplaints()
-      setDeletingId(null)
+      await loadComplaints();
+      setDeletingId(null);
     } catch (err) {
-      console.error(err)
-      setError('Không thể xóa khiếu nại. Vui lòng thử lại.')
-      alert('Có lỗi xảy ra: ' + err.message)
+      console.error(err);
+      setError("Không thể xóa khiếu nại. Vui lòng thử lại.");
+      alert("Có lỗi xảy ra: " + err.message);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  // Toggle trạng thái đã đọc/chưa đọc
+  const toggleReadStatus = async (complaint) => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const nextIsRead = !complaint.isRead;
+      await updateComplaintReadStatus(complaint.id, nextIsRead);
+
+      // Cập nhật lại state tại chỗ để UI phản hồi nhanh
+      setComplaints((prev) =>
+        prev.map((c) =>
+          c.id === complaint.id ? { ...c, isRead: nextIsRead } : c
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Không thể cập nhật trạng thái đã đọc. Vui lòng thử lại.");
+      alert("Có lỗi xảy ra: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Định dạng ngày tháng theo dd/mm/yyyy
   const formatDate = (dateString) => {
-    if (!dateString) return ''
-    
+    if (!dateString) return "";
+
     // Nếu backend đã trả về đúng format dd/mm/yyyy thì giữ nguyên
-    if (dateString.includes('/')) return dateString
-    
+    if (dateString.includes("/")) return dateString;
+
     // Xử lý định dạng ISO (yyyy-mm-ddThh:mm:ss.sssZ) hoặc "yyyy-mm-dd"
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) return dateString
-    
-    const day = String(date.getDate()).padStart(2, '0')
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const year = date.getFullYear()
-    return `${day}/${month}/${year}`
-  }
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   return (
     <div className="grid" style={{ gap: 12 }}>
       <div className="card" style={{ padding: 12 }}>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <input
             placeholder="Tìm theo tên người gửi/email/nội dung"
             value={query}
-            onChange={e => setQuery(e.target.value)}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: 8, border: '1px solid #000', background: 'var(--color-surface)', color: 'var(--color-text)' }}
+            onChange={(e) => setQuery(e.target.value)}
+            style={{
+              flex: 1,
+              padding: "10px 12px",
+              borderRadius: 8,
+              border: "1px solid #000",
+              background: "var(--color-surface)",
+              color: "var(--color-text)",
+            }}
           />
-          <button className="btn ghost" onClick={loadComplaints} disabled={loading}>
-            {loading ? 'Đang tải...' : 'Làm mới'}
+          <button
+            className="btn ghost"
+            onClick={loadComplaints}
+            disabled={loading}
+          >
+            {loading ? "Đang tải..." : "Làm mới"}
           </button>
         </div>
         {error && (
-          <div style={{ marginTop: 8, color: '#fa5252', fontSize: 13 }}>
+          <div style={{ marginTop: 8, color: "#fa5252", fontSize: 13 }}>
             {error}
           </div>
         )}
       </div>
 
-      <div className="card" style={{ overflow: 'hidden' }}>
+      <div className="card" style={{ overflow: "hidden" }}>
         <table className="table">
           <thead>
             <tr>
@@ -126,13 +167,21 @@ export default function Complaints() {
               <th>Email</th>
               <th>Nội dung khiếu nại</th>
               <th>Ngày gửi</th>
-              <th style={{ width: 120 }}>Hành động</th>
+              <th>Trạng thái</th>
+              <th style={{ width: 220 }}>Hành động</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={6} style={{ textAlign: 'center', padding: '24px', color: 'var(--color-text-muted)' }}>
+                <td
+                  colSpan={6}
+                  style={{
+                    textAlign: "center",
+                    padding: "24px",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
                   Không có khiếu nại nào
                 </td>
               </tr>
@@ -142,16 +191,39 @@ export default function Complaints() {
                   <td>{index + 1}</td>
                   <td>{complaint.senderName}</td>
                   <td>{complaint.phone}</td>
-                  <td style={{ maxWidth: 400, wordWrap: 'break-word' }}>{complaint.content}</td>
+                  <td style={{ maxWidth: 400, wordWrap: "break-word" }}>
+                    {complaint.content}
+                  </td>
                   <td>{formatDate(complaint.createdAt)}</td>
                   <td>
-                    <button 
-                      className="btn danger" 
-                      onClick={() => openDeleteConfirm(complaint.id)}
-                      disabled={loading}
+                    <span
+                      className={`status-dot ${
+                        complaint.isRead ? "active" : "inactive"
+                      }`}
                     >
-                      Xóa
-                    </button>
+                      <span className="dot" />
+                      {complaint.isRead ? "Đã đọc" : "Chưa đọc"}
+                    </span>
+                  </td>
+                  <td>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button
+                        className="btn secondary"
+                        onClick={() => toggleReadStatus(complaint)}
+                        disabled={loading}
+                      >
+                        {complaint.isRead
+                          ? "Đánh dấu chưa đọc"
+                          : "Đánh dấu đã đọc"}
+                      </button>
+                      <button
+                        className="btn danger"
+                        onClick={() => openDeleteConfirm(complaint.id)}
+                        disabled={loading}
+                      >
+                        Xóa
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -164,8 +236,8 @@ export default function Complaints() {
       <ConfirmModal
         isOpen={showConfirmModal}
         onClose={() => {
-          setShowConfirmModal(false)
-          setDeletingId(null)
+          setShowConfirmModal(false);
+          setDeletingId(null);
         }}
         onConfirm={deleteComplaint}
         title="Xóa khiếu nại"
@@ -175,6 +247,5 @@ export default function Complaints() {
         type="danger"
       />
     </div>
-  )
+  );
 }
-
