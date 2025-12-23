@@ -63,7 +63,7 @@ export default function Vouchers() {
         const displayDiscount =
           discountType === "freeship"
             ? "Miễn phí ship"
-            : d.percent ?? d.discountmoney ?? 0;
+            : d.percent ?? Number(d.discountmoney ?? 0);
 
         return {
           id: d.id ?? `discount-${index}`,
@@ -334,7 +334,10 @@ export default function Vouchers() {
     if (voucher.discountType === "percent") {
       return `Giảm ${voucher.discount}%`;
     }
-    return `Giảm ${voucher.discount.toLocaleString("vi-VN")}đ`;
+    return `Giảm ${Number(voucher.discount || 0).toLocaleString("vi-VN", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })}đ`;
   };
 
   return (
@@ -414,10 +417,18 @@ export default function Vouchers() {
                   </td>
                   <td>
                     {voucher.minOrder > 0
-                      ? `${voucher.minOrder.toLocaleString("vi-VN")}đ`
+                      ? `${Number(voucher.minOrder || 0).toLocaleString(
+                          "vi-VN",
+                          { minimumFractionDigits: 0, maximumFractionDigits: 0 }
+                        )}đ`
                       : "Không có"}
                   </td>
-                  <td>{voucher.quantity?.toLocaleString("vi-VN") || 0}</td>
+                  <td>
+                    {Number(voucher.quantity || 0).toLocaleString("vi-VN", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    })}
+                  </td>
                   <td>
                     <span
                       className={`badge ${
