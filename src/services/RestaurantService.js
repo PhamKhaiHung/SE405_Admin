@@ -1,43 +1,45 @@
-const API_BASE_URL = 'http://localhost:5000'
+const API_BASE_URL = "http://localhost:5000";
 
 /**
  * Lấy token từ localStorage
  * @returns {string|null} Token hoặc null
  */
 function getToken() {
-  return localStorage.getItem('accessToken')
+  return localStorage.getItem("accessToken");
 }
 
-/**
- * Gọi API lấy tất cả nhà hàng (KHÔNG cần token)
- * @returns {Promise<Array>} Danh sách nhà hàng từ backend
- */
 export async function fetchAllRestaurants() {
-  const url = `${API_BASE_URL}/restaurants/all`
+  const url = `${API_BASE_URL}/restaurants/all`;
+  const token = getToken();
 
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        accept: '*/*',
-      },
-    })
-
-    if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`)
+    const headers = {
+      accept: "*/*",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
-    const data = await response.json()
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
 
     // Đảm bảo luôn trả về mảng
     if (!Array.isArray(data)) {
-      throw new Error('Invalid response format: expected an array')
+      throw new Error("Invalid response format: expected an array");
     }
 
-    return data
+    return data;
   } catch (error) {
-    console.error('fetchAllRestaurants error:', error)
-    throw error
+    console.error("fetchAllRestaurants error:", error);
+    throw error;
   }
 }
 
@@ -47,31 +49,31 @@ export async function fetchAllRestaurants() {
  * @returns {Promise<Object>} Thông tin chi tiết nhà hàng
  */
 export async function fetchRestaurantDetail(restaurantId) {
-  const url = `${API_BASE_URL}/restaurants/${restaurantId}`
-  const token = getToken()
+  const url = `${API_BASE_URL}/restaurants/${restaurantId}`;
+  const token = getToken();
 
   try {
     const headers = {
-      accept: '*/*',
-    }
+      accept: "*/*",
+    };
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const response = await fetch(url, {
-      method: 'GET',
+      method: "GET",
       headers,
-    })
+    });
 
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`)
+      throw new Error(`Request failed with status ${response.status}`);
     }
 
-    const data = await response.json()
-    return data
+    const data = await response.json();
+    return data;
   } catch (error) {
-    console.error('fetchRestaurantDetail error:', error)
-    throw error
+    console.error("fetchRestaurantDetail error:", error);
+    throw error;
   }
 }
 
@@ -81,33 +83,34 @@ export async function fetchRestaurantDetail(restaurantId) {
  * @param {boolean} isActive - trạng thái mới
  */
 export async function updateRestaurantStatus(restaurantId, isActive) {
-  const url = `${API_BASE_URL}/restaurants/${restaurantId}/status`
-  const token = getToken()
+  const url = `${API_BASE_URL}/restaurants/${restaurantId}/status`;
+  const token = getToken();
 
   try {
     const headers = {
-      accept: '*/*',
-      'Content-Type': 'application/json',
-    }
+      accept: "*/*",
+      "Content-Type": "application/json",
+    };
     if (token) {
-      headers['Authorization'] = `Bearer ${token}`
+      headers["Authorization"] = `Bearer ${token}`;
     }
 
     const response = await fetch(url, {
-      method: 'PATCH',
+      method: "PATCH",
       headers,
       body: JSON.stringify({ isActive }),
-    })
+    });
 
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`)
+      throw new Error(`Request failed with status ${response.status}`);
     }
 
     // Nếu backend trả về restaurant đã cập nhật thì có thể dùng; hiện tại chỉ cần biết là thành công
-    return response.status === 204 ? null : await response.json().catch(() => null)
+    return response.status === 204
+      ? null
+      : await response.json().catch(() => null);
   } catch (error) {
-    console.error('updateRestaurantStatus error:', error)
-    throw error
+    console.error("updateRestaurantStatus error:", error);
+    throw error;
   }
 }
-
